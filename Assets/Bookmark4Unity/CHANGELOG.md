@@ -4,5 +4,5 @@
 
 ### Features
 
-- Bookmark arbitrary object in the scene
-- Bookmark arbitrary asset in the project
+- Bookmark arbitrary objects in the scene
+- Bookmark arbitrary assets in the project
