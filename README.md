@@ -11,9 +11,9 @@ A simple unity editor tool to provide basic bookmarking for scene objects and pr
 1. Window > Package Manager
 2. 「+」 > Add package from git URL
 3. Use the following link to install
-   - `git+ssh://git@github.com/superkerokero/Bookmark4Unity.git?path=/Assets/Bookmark4Unity`
+   - `https://github.com/superkerokero/Bookmark4Unity.git?path=/Assets/Bookmark4Unity`
 4. You can install a specific version like this
-   - `git+ssh://git@github.com/superkerokero/Bookmark4Unity.git?path=/Assets/Bookmark4Unity#1.0.0`
+   - `https://github.com/superkerokero/Bookmark4Unity.git?path=/Assets/Bookmark4Unity#1.0.0`
 
 ## Basic usage
 
