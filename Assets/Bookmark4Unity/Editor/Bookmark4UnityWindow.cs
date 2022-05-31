@@ -42,8 +42,6 @@
             public string type;
         }
 
-        private static string GetPrefix() { return Application.productName + "_BOOKMARK4UNITY_"; }
-
         [SerializeField]
         Dictionary<string, List<AssetData>> _assetsDataEntries = null;
         Dictionary<string, List<AssetData>> AssetsDataEntries
@@ -81,6 +79,11 @@
         private Vector2 scrollPosAssets = Vector2.zero;
 
         private const string Name = "Bookmark4Unity";
+        private static string Prefix => Application.productName + "_BOOKMARK4UNITY_";
+        private static string PinnedKey => Prefix + "pinned";
+        private static string SceneObjectsFoldoutKey => Prefix + "sceneObjects";
+        private static string AssetsFoldoutKey => Prefix + "assets";
+
 
 
         [MenuItem("Window/Bookmark4Unity")]
@@ -115,46 +118,56 @@
                 }
             }
 
-            // scene objects
-            sceneObjectFoldout = EditorGUILayout.Foldout(sceneObjectFoldout, "Scene Objects");
-            if (sceneObjectFoldout)
+            using (var check = new EditorGUI.ChangeCheckScope())
             {
-                using (var scrollView = new GUILayout.ScrollViewScope(scrollPosSceneObj))
+                // scene objects
+                sceneObjectFoldout = EditorGUILayout.Foldout(sceneObjectFoldout, "Scene Objects");
+                if (sceneObjectFoldout)
                 {
-                    scrollPosSceneObj = scrollView.scrollPosition;
-                    foreach (var data in GuidDataEntries)
+                    using (var scrollView = new GUILayout.ScrollViewScope(scrollPosSceneObj))
                     {
-                        using (new GUILayout.VerticalScope(EditorStyles.helpBox))
+                        scrollPosSceneObj = scrollView.scrollPosition;
+                        foreach (var data in GuidDataEntries)
                         {
-                            GUILayout.Label(data.Key);
-                            foreach (var guidData in data.Value)
+                            using (new GUILayout.VerticalScope(EditorStyles.helpBox))
                             {
-                                if (DrawSceneObjectData(guidData)) return;
+                                GUILayout.Label(data.Key);
+                                foreach (var guidData in data.Value)
+                                {
+                                    if (DrawSceneObjectData(guidData)) return;
+                                }
                             }
                         }
                     }
                 }
+
+                if (check.changed) EditorPrefs.SetBool(SceneObjectsFoldoutKey, sceneObjectFoldout);
             }
 
-            // assets list
-            assetsFoldout = EditorGUILayout.Foldout(assetsFoldout, "Assets");
-            if (assetsFoldout)
+            using (var check = new EditorGUI.ChangeCheckScope())
             {
-                using (var scrollView = new GUILayout.ScrollViewScope(scrollPosAssets))
+                // assets list
+                assetsFoldout = EditorGUILayout.Foldout(assetsFoldout, "Assets");
+                if (assetsFoldout)
                 {
-                    scrollPosAssets = scrollView.scrollPosition;
-                    foreach (var data in AssetsDataEntries)
+                    using (var scrollView = new GUILayout.ScrollViewScope(scrollPosAssets))
                     {
-                        using (new GUILayout.VerticalScope(EditorStyles.helpBox))
+                        scrollPosAssets = scrollView.scrollPosition;
+                        foreach (var data in AssetsDataEntries)
                         {
-                            GUILayout.Label(data.Key);
-                            foreach (var assetData in data.Value)
+                            using (new GUILayout.VerticalScope(EditorStyles.helpBox))
                             {
-                                if (DrawAssetData(assetData)) return;
+                                GUILayout.Label(data.Key);
+                                foreach (var assetData in data.Value)
+                                {
+                                    if (DrawAssetData(assetData)) return;
+                                }
                             }
                         }
                     }
                 }
+
+                if (check.changed) EditorPrefs.SetBool(AssetsFoldoutKey, assetsFoldout);
             }
         }
 
@@ -284,7 +297,6 @@
 
         private void SaveData()
         {
-            string key = GetPrefix() + "pinned";
             var data = new DataWrapper();
 
             foreach (var item in GuidDataEntries.Values)
@@ -297,7 +309,7 @@
                 data.assets.AddRange(item);
             }
 
-            EditorPrefs.SetString(key, JsonUtility.ToJson(data));
+            EditorPrefs.SetString(PinnedKey, JsonUtility.ToJson(data));
         }
 
         private void LoadData()
@@ -305,10 +317,9 @@
             _guidDataEntries = new Dictionary<string, List<GuidReference>>();
             _assetsDataEntries = new Dictionary<string, List<AssetData>>();
 
-            string key = GetPrefix() + "pinned";
-            if (EditorPrefs.HasKey(key))
+            if (EditorPrefs.HasKey(PinnedKey))
             {
-                var data = JsonUtility.FromJson<DataWrapper>(EditorPrefs.GetString(key));
+                var data = JsonUtility.FromJson<DataWrapper>(EditorPrefs.GetString(PinnedKey));
 
                 foreach (var reference in data.references)
                 {
@@ -334,6 +345,9 @@
                     }
                 }
             }
+
+            if (EditorPrefs.HasKey(SceneObjectsFoldoutKey)) sceneObjectFoldout = EditorPrefs.GetBool(SceneObjectsFoldoutKey);
+            if (EditorPrefs.HasKey(AssetsFoldoutKey)) assetsFoldout = EditorPrefs.GetBool(AssetsFoldoutKey);
         }
 
         private void RemovePin(GuidReference reference)
@@ -368,13 +382,13 @@
         {
             if (EditorWindow.HasOpenInstances<Bookmark4UnityWindow>())
             {
-                var window = GetWindow<Bookmark4UnityWindow>("★ Fav. Assets");
+                var window = GetWindow<Bookmark4UnityWindow>(Name);
                 window.PinSelected();
             }
             else
             {
                 if (Selection.assetGUIDs.Count() == 0) return;
-                string key = GetPrefix() + "pinned";
+                var key = PinnedKey;
                 if (EditorPrefs.HasKey(key))
                 {
                     var data = JsonUtility.FromJson<DataWrapper>(EditorPrefs.GetString(key));
