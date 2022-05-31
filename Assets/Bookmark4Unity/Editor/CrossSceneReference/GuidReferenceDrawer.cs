@@ -14,8 +14,8 @@
         SerializedProperty nameProp;
 
         // cache off GUI content to avoid creating garbage every frame in editor
-        GUIContent sceneLabel = new GUIContent("Containing Scene", "The target object is expected in this scene asset.");
-        GUIContent clearButtonGUI = new GUIContent("Clear", "Remove Cross Scene Reference");
+        readonly GUIContent sceneLabel = new("Containing Scene", "The target object is expected in this scene asset.");
+        readonly GUIContent clearButtonGUI = new("Clear", "Remove Cross Scene Reference");
 
         // add an extra line to display source scene for targets
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
@@ -27,8 +27,8 @@
         {
 
             guidProp = property.FindPropertyRelative("serializedGuid");
-            nameProp = property.FindPropertyRelative("cachedName");
-            sceneProp = property.FindPropertyRelative("cachedScene");
+            nameProp = property.FindPropertyRelative("_cachedName");
+            sceneProp = property.FindPropertyRelative("_cachedScene");
 
             // Using BeginProperty / EndProperty on the parent property means that
             // prefab override logic works on the entire property.
@@ -40,7 +40,7 @@
             var guidCompPosition = EditorGUI.PrefixLabel(position, GUIUtility.GetControlID(FocusType.Passive), label);
 
             System.Guid currentGuid;
-            GameObject currentGO = null;
+            GameObject currentGO;
 
             // working with array properties is a bit unwieldy
             // you have to get the property at each index manually

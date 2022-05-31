@@ -40,9 +40,11 @@
         [SerializeField]
         private string _cachedName;
         [SerializeField]
-        private string _cachedScene;
+        private string _cachedSceneName;
+        [SerializeField]
+        private SceneAsset _cachedScene;
         public string CachedName => _cachedName;
-        public string CachedScene => _cachedScene;
+        public string CachedSceneName => _cachedSceneName;
 #endif
 
         // Set up events to let users register to cleanup their own cached references on destroy or to cache off values
@@ -74,19 +76,20 @@
 
         public GuidReference() { }
 
+#if UNITY_EDITOR
         public GuidReference(GuidData data)
         {
             var bytes = Convert.FromBase64String(data.guid);
             guid = new System.Guid(bytes);
             _cachedName = data.cachedName;
-            _cachedScene = data.cachedScene;
+            _cachedSceneName = data.cachedScene;
         }
 
         public GuidReference(GuidComponent target)
         {
             guid = target.GetGuid();
             _cachedName = target.gameObject.name;
-            _cachedScene = target.gameObject.scene.name;
+            _cachedSceneName = target.gameObject.scene.name;
         }
 
         public GuidData ToData()
@@ -95,9 +98,10 @@
             {
                 guid = GuidString,
                 cachedName = CachedName,
-                cachedScene = CachedScene
+                cachedScene = CachedSceneName
             };
         }
+#endif
 
         private void GuidAdded(GameObject go)
         {

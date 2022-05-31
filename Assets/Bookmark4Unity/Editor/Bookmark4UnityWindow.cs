@@ -168,7 +168,7 @@
                 using (new EditorGUIUtility.IconSizeScope(Vector2.one * 16))
                 {
                     var icon = gameObject == null ? EditorGUIUtility.IconContent("console.warnicon").image : PrefabUtility.GetIconForGameObject(gameObject);
-                    if (GUILayout.Button(new GUIContent(" " + reference.CachedName, icon, reference.CachedScene), style, GUILayout.Height(18)))
+                    if (GUILayout.Button(new GUIContent(" " + reference.CachedName, icon, reference.CachedSceneName), style, GUILayout.Height(18)))
                     {
                         if (gameObject != null)
                         {
@@ -338,8 +338,8 @@
 
         private void RemovePin(GuidReference reference)
         {
-            _guidDataEntries[reference.CachedScene].Remove(reference);
-            if (_guidDataEntries[reference.CachedScene].Count == 0) _guidDataEntries.Remove(reference.CachedScene);
+            _guidDataEntries[reference.CachedSceneName].Remove(reference);
+            if (_guidDataEntries[reference.CachedSceneName].Count == 0) _guidDataEntries.Remove(reference.CachedSceneName);
             if (reference.gameObject != null) DestroyImmediate(reference.gameObject.GetComponent<GuidComponent>());
 
             SaveData();
