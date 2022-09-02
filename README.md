@@ -30,6 +30,8 @@ A simple unity editor tool to provide basic bookmarking for scene objects and pr
 - For bookmarked assets, click green `⎋` button to open it
 - To sort bookmarked assets by name, click `▼` button at the left of `Pin Selected` button
 - To remove a bookmark, click red `x` button on the item
+- To save collections to binary file, use `Save Collections` from menu
+- To load collections from saved binary file, use `Load Collections` from menu
 
 ## LICENSE
 

@@ -4,6 +4,7 @@
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using System.Runtime.Serialization.Formatters.Binary;
     using Bookmark4Unity.Guid;
     using UnityEditor;
     using UnityEngine;
@@ -24,7 +25,7 @@
         }
     }
 
-    public class Bookmark4UnityWindow : EditorWindow
+    public class Bookmark4UnityWindow : EditorWindow, IHasCustomMenu
     {
         [System.Serializable]
         public class DataWrapper
@@ -92,11 +93,17 @@
             GetWindow<Bookmark4UnityWindow>(Name);
         }
 
+        void IHasCustomMenu.AddItemsToMenu(GenericMenu menu)
+        {
+            menu.AddItem(new GUIContent("Save Collections"), false, SaveDataToFile);
+            menu.AddItem(new GUIContent("Load Collections"), false, LoadDataFromFile);
+        }
+
         public void OnGUI()
         {
             using (new GUILayout.HorizontalScope(EditorStyles.helpBox))
             {
-                if (GUILayout.Button("▼", EditorStyles.toolbarButton, GUILayout.ExpandWidth(false)))
+                if (GUILayout.Button(new GUIContent("▼", "Sort by name"), EditorStyles.toolbarButton, GUILayout.ExpandWidth(false)))
                 {
                     foreach (var list in _guidDataEntries.Values)
                     {
@@ -295,7 +302,7 @@
             SaveData();
         }
 
-        private void SaveData()
+        private DataWrapper GetCurrentData()
         {
             var data = new DataWrapper();
 
@@ -309,7 +316,42 @@
                 data.assets.AddRange(item);
             }
 
-            EditorPrefs.SetString(PinnedKey, JsonUtility.ToJson(data));
+            return data;
+        }
+
+        private void LoadData(DataWrapper data)
+        {
+            _guidDataEntries.Clear();
+            _assetsDataEntries.Clear();
+
+            foreach (var reference in data.references)
+            {
+                if (_guidDataEntries.ContainsKey(reference.cachedScene))
+                {
+                    _guidDataEntries[reference.cachedScene].Add(new GuidReference(reference));
+                }
+                else
+                {
+                    _guidDataEntries[reference.cachedScene] = new List<GuidReference>() { new GuidReference(reference) };
+                }
+            }
+
+            foreach (var asset in data.assets)
+            {
+                if (_assetsDataEntries.ContainsKey(asset.type))
+                {
+                    _assetsDataEntries[asset.type].Add(asset);
+                }
+                else
+                {
+                    _assetsDataEntries[asset.type] = new List<AssetData>() { asset };
+                }
+            }
+        }
+
+        private void SaveData()
+        {
+            EditorPrefs.SetString(PinnedKey, JsonUtility.ToJson(GetCurrentData()));
         }
 
         private void LoadData()
@@ -320,34 +362,39 @@
             if (EditorPrefs.HasKey(PinnedKey))
             {
                 var data = JsonUtility.FromJson<DataWrapper>(EditorPrefs.GetString(PinnedKey));
-
-                foreach (var reference in data.references)
-                {
-                    if (_guidDataEntries.ContainsKey(reference.cachedScene))
-                    {
-                        _guidDataEntries[reference.cachedScene].Add(new GuidReference(reference));
-                    }
-                    else
-                    {
-                        _guidDataEntries[reference.cachedScene] = new List<GuidReference>() { new GuidReference(reference) };
-                    }
-                }
-
-                foreach (var asset in data.assets)
-                {
-                    if (_assetsDataEntries.ContainsKey(asset.type))
-                    {
-                        _assetsDataEntries[asset.type].Add(asset);
-                    }
-                    else
-                    {
-                        _assetsDataEntries[asset.type] = new List<AssetData>() { asset };
-                    }
-                }
+                LoadData(data);
             }
 
             if (EditorPrefs.HasKey(SceneObjectsFoldoutKey)) sceneObjectFoldout = EditorPrefs.GetBool(SceneObjectsFoldoutKey);
             if (EditorPrefs.HasKey(AssetsFoldoutKey)) assetsFoldout = EditorPrefs.GetBool(AssetsFoldoutKey);
+        }
+
+        private void SaveDataToFile()
+        {
+            var path = EditorUtility.SaveFilePanel("Bookmark4Unity", ".", "", "dat");
+            if (path == "") return;
+
+            var data = GetCurrentData();
+            using (var dataStream = new FileStream(path, FileMode.Create))
+            {
+                var converter = new BinaryFormatter();
+                converter.Serialize(dataStream, data);
+            }
+        }
+
+        private void LoadDataFromFile()
+        {
+            var path = EditorUtility.OpenFilePanel("Bookmark4Unity", ".", "dat");
+            if (path == "") return;
+
+            using (var dataStream = new FileStream(path, FileMode.Open))
+            {
+                var converter = new BinaryFormatter();
+                var data = converter.Deserialize(dataStream) as DataWrapper;
+                LoadData(data);
+            }
+
+            SaveData();
         }
 
         private void RemovePin(GuidReference reference)
