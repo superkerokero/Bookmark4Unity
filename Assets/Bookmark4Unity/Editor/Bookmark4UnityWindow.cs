@@ -35,12 +35,36 @@
         }
 
         [System.Serializable]
-        public class AssetData
+        public class AssetData : IEquatable<AssetData>
         {
             public string guid;
             public string path;
             public string name;
             public string type;
+
+            public override bool Equals(object obj) => this.Equals(obj as AssetData);
+
+            public bool Equals(AssetData other)
+            {
+                if (other is null) return false;
+                if (System.Object.ReferenceEquals(this, other)) return true;
+                return this.guid == other.guid;
+            }
+
+            public override int GetHashCode() => guid.GetHashCode();
+
+            public static bool operator ==(AssetData lhs, AssetData rhs)
+            {
+                if (lhs is null)
+                {
+                    if (rhs is null) return true;
+                    return false;
+                }
+
+                return lhs.Equals(rhs);
+            }
+
+            public static bool operator !=(AssetData lhs, AssetData rhs) => !(lhs == rhs);
         }
 
         [SerializeField]
@@ -118,9 +142,11 @@
 
                 using (new BackgroundColorScope(Color.yellow))
                 {
-                    if (GUILayout.Button(new GUIContent("Pin Selected", "Shortcut: Alt+Cmd+A"), EditorStyles.miniButton))
+                    if (GUILayout.Button(new GUIContent("Pin Selected", "Shortcut: Alt+Ctrl+A/Alt+Cmd+A"), EditorStyles.miniButton))
                     {
                         PinSelected();
+                        LoadData();
+                        Repaint();
                     }
                 }
             }
@@ -264,42 +290,43 @@
             return false;
         }
 
-        private void PinSelected()
+        public static void PinSelected()
         {
+            // load data
+            DataWrapper data;
+            if (EditorPrefs.HasKey(PinnedKey))
+            {
+                data = JsonUtility.FromJson<DataWrapper>(EditorPrefs.GetString(PinnedKey));
+            }
+            else
+            {
+                data = new DataWrapper();
+            }
+
+            // add scene objects
             foreach (var trans in Selection.transforms)
             {
                 var gameObj = trans.gameObject;
                 var guidComponent = gameObj.GetComponent<GuidComponent>();
                 if (guidComponent == null) guidComponent = gameObj.AddComponent<GuidComponent>();
-                if (_guidDataEntries.ContainsKey(gameObj.scene.name))
-                {
-                    _guidDataEntries[gameObj.scene.name].Add(new GuidReference(guidComponent));
-                }
-                else
-                {
-                    _guidDataEntries[gameObj.scene.name] = new List<GuidReference>() { new GuidReference(guidComponent) };
-                }
+                var guidReference = new GuidReference(guidComponent);
+                var guidData = guidReference.ToData();
+                if (!data.references.Contains(guidData)) data.references.Add(guidData);
             }
 
+            // add assets
             foreach (string assetGUID in Selection.assetGUIDs)
             {
                 var assetData = new AssetData();
                 assetData.guid = assetGUID;
                 assetData.path = AssetDatabase.GUIDToAssetPath(assetGUID);
-                Object asset = AssetDatabase.LoadAssetAtPath<Object>(assetData.path);
+                var asset = AssetDatabase.LoadAssetAtPath<Object>(assetData.path);
                 assetData.name = asset.name;
                 assetData.type = asset.GetType().ToString();
-                if (_assetsDataEntries.ContainsKey(assetData.type))
-                {
-                    _assetsDataEntries[assetData.type].Add(assetData);
-                }
-                else
-                {
-                    _assetsDataEntries[assetData.type] = new List<AssetData>() { assetData };
-                }
+                if (!data.assets.Contains(assetData)) data.assets.Add(assetData);
             }
 
-            SaveData();
+            SaveData(data);
         }
 
         private DataWrapper GetCurrentData()
@@ -319,7 +346,7 @@
             return data;
         }
 
-        private void LoadData(DataWrapper data)
+        public void LoadData(DataWrapper data)
         {
             _guidDataEntries.Clear();
             _assetsDataEntries.Clear();
@@ -349,12 +376,12 @@
             }
         }
 
-        private void SaveData()
+        public static void SaveData(DataWrapper data)
         {
-            EditorPrefs.SetString(PinnedKey, JsonUtility.ToJson(GetCurrentData()));
+            EditorPrefs.SetString(PinnedKey, JsonUtility.ToJson(data));
         }
 
-        private void LoadData()
+        public void LoadData()
         {
             _guidDataEntries = new Dictionary<string, List<GuidReference>>();
             _assetsDataEntries = new Dictionary<string, List<AssetData>>();
@@ -394,7 +421,7 @@
                 LoadData(data);
             }
 
-            SaveData();
+            SaveData(GetCurrentData());
         }
 
         private void RemovePin(GuidReference reference)
@@ -403,14 +430,14 @@
             if (_guidDataEntries[reference.CachedSceneName].Count == 0) _guidDataEntries.Remove(reference.CachedSceneName);
             if (reference.gameObject != null) DestroyImmediate(reference.gameObject.GetComponent<GuidComponent>());
 
-            SaveData();
+            SaveData(GetCurrentData());
         }
 
         private void RemovePin(AssetData assetData)
         {
             _assetsDataEntries[assetData.type].Remove(assetData);
             if (_assetsDataEntries[assetData.type].Count == 0) _assetsDataEntries.Remove(assetData.type);
-            SaveData();
+            SaveData(GetCurrentData());
         }
 
         private int GuidReferenceComparer(GuidReference left, GuidReference right)
@@ -427,32 +454,12 @@
         [MenuItem("Assets/Pin Selected To Fav. Assets %&a")]
         public static void PinSelectedToCollection()
         {
+            Bookmark4UnityWindow.PinSelected();
             if (EditorWindow.HasOpenInstances<Bookmark4UnityWindow>())
             {
                 var window = GetWindow<Bookmark4UnityWindow>(Name);
-                window.PinSelected();
-            }
-            else
-            {
-                if (Selection.assetGUIDs.Count() == 0) return;
-                var key = PinnedKey;
-                if (EditorPrefs.HasKey(key))
-                {
-                    var data = JsonUtility.FromJson<DataWrapper>(EditorPrefs.GetString(key));
-
-                    foreach (string assetGUID in Selection.assetGUIDs)
-                    {
-                        var assetData = new AssetData();
-                        assetData.guid = assetGUID;
-                        assetData.path = AssetDatabase.GUIDToAssetPath(assetGUID);
-                        Object asset = AssetDatabase.LoadAssetAtPath<Object>(assetData.path);
-                        assetData.name = asset.name;
-                        assetData.type = asset.GetType().ToString();
-                        data.assets.Add(assetData);
-                    }
-
-                    EditorPrefs.SetString(key, JsonUtility.ToJson(data));
-                }
+                window.LoadData();
+                window.Repaint();
             }
         }
     }

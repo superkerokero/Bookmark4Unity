@@ -15,6 +15,10 @@ A simple unity editor tool to provide basic bookmarking for scene objects and pr
 4. You can install a specific version like this
    - `https://github.com/superkerokero/Bookmark4Unity.git?path=/Assets/Bookmark4Unity#1.0.0`
 
+## Supported unity version
+
+- 2021.2~
+
 ## Basic usage
 
 ### Bookmarking objects/assets

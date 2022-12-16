@@ -8,11 +8,35 @@
 #endif
 
     [System.Serializable]
-    public class GuidData
+    public class GuidData : IEquatable<GuidData>
     {
         public string guid; // base64 string
         public string cachedName;
         public string cachedScene;
+
+        public override bool Equals(object obj) => this.Equals(obj as GuidData);
+
+        public bool Equals(GuidData other)
+        {
+            if (other is null) return false;
+            if (System.Object.ReferenceEquals(this, other)) return true;
+            return this.guid == other.guid;
+        }
+
+        public override int GetHashCode() => guid.GetHashCode();
+
+        public static bool operator ==(GuidData lhs, GuidData rhs)
+        {
+            if (lhs is null)
+            {
+                if (rhs is null) return true;
+                return false;
+            }
+
+            return lhs.Equals(rhs);
+        }
+
+        public static bool operator !=(GuidData lhs, GuidData rhs) => !(lhs == rhs);
     }
 
 
