@@ -1,10 +1,10 @@
 # CHANGELOG
 
-## v1.1.0 (2022-12-16)
+## v1.1.0 (2022-12-22)
 
 ### Features
 
--
+- Add scene view camera bookmarks.
 
 ### Bugfix
 

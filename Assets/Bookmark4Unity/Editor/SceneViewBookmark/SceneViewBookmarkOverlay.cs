@@ -152,7 +152,6 @@ namespace Bookmark4Unity.Editor
 
             // unload unused assets
             EditorUtility.UnloadUnusedAssetsImmediate();
-
         }
 
         public override VisualElement CreatePanelContent()

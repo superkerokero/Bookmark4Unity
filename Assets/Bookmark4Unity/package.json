@@ -1,14 +1,14 @@
 {
   "name": "com.superkerokero.bookmark4unity",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "displayName": "Bookmark4Unity",
-  "description": "A simple unity editor tool to provide basic bookmarking for scene objects and project assets.",
+  "description": "A simple unity editor tool to provide basic bookmarking for scene objects, scene view camera positions, and project assets.",
   "unity": "2021.3",
   "author": {
     "name": "superkerokero",
     "email": "superkerokero@outlook.com"
   },
   "changelogUrl": "https://github.com/superkerokero/Bookmark4Unity/blob/master/Assets/Bookmark4Unity/CHANGELOG.md",
-  "documentationUrl": "https://github.com/superkerokero/Bookmark4Unity",
+  "documentationUrl": "https://github.com/superkerokero/Bookmark4Unity/blob/master/README.md",
   "licensesUrl": "https://github.com/superkerokero/Bookmark4Unity/blob/master/Assets/Bookmark4Unity/LICENSE.md"
 }
