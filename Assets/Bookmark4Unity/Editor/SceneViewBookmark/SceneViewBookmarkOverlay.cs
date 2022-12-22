@@ -126,13 +126,10 @@ namespace Bookmark4Unity.Editor
         private void OnSetBookmark(int index, SceneViewCameraBookmark bookmark, Texture2D preview)
         {
             // destroy previous texture
-            try
+            var prevTexture = moveToBtns[index].style.backgroundImage.value.texture;
+            if (prevTexture != SceneViewBookmarkManager.SceneViewBookmarkIcon && prevTexture != SceneViewBookmarkManager.SceneViewEmptyIcon)
             {
-                UnityEngine.Object.DestroyImmediate(moveToBtns[index].style.backgroundImage.value.texture);
-            }
-            catch
-            {
-                // do nothing
+                UnityEngine.Object.DestroyImmediate(prevTexture);
             }
 
             // assign new preview texture
