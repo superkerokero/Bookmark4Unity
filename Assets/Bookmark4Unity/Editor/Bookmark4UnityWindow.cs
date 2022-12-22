@@ -103,15 +103,15 @@
         private Vector2 scrollPosSceneObj = Vector2.zero;
         private Vector2 scrollPosAssets = Vector2.zero;
 
-        private const string Name = "Bookmark4Unity";
-        private static string Prefix => Application.productName + "_BOOKMARK4UNITY_";
+        public const string Name = "Bookmark4Unity";
+        public static string Prefix => Application.productName + "_BOOKMARK4UNITY_";
         private static string PinnedKey => Prefix + "pinned";
         private static string SceneObjectsFoldoutKey => Prefix + "sceneObjects";
         private static string AssetsFoldoutKey => Prefix + "assets";
 
 
 
-        [MenuItem("Window/Bookmark4Unity")]
+        [MenuItem("Tools/Bookmark4Unity/Open Bookmark Window")]
         public static void ShowWindow()
         {
             GetWindow<Bookmark4UnityWindow>(Name);
@@ -311,7 +311,11 @@
                 if (guidComponent == null) guidComponent = gameObj.AddComponent<GuidComponent>();
                 var guidReference = new GuidReference(guidComponent);
                 var guidData = guidReference.ToData();
-                if (!data.references.Contains(guidData)) data.references.Add(guidData);
+                if (!data.references.Contains(guidData))
+                {
+                    data.references.Add(guidData);
+                    Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: [<color=yellow><b>{guidData.cachedScene}</b></color>] Scene object <color=red><b>{guidData.cachedName}</b></color> bookmarked.");
+                }
             }
 
             // add assets
@@ -323,7 +327,11 @@
                 var asset = AssetDatabase.LoadAssetAtPath<Object>(assetData.path);
                 assetData.name = asset.name;
                 assetData.type = asset.GetType().ToString();
-                if (!data.assets.Contains(assetData)) data.assets.Add(assetData);
+                if (!data.assets.Contains(assetData))
+                {
+                    data.assets.Add(assetData);
+                    Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: <color=yellow><b>{assetData.type}</b></color> asset <color=red><b>{assetData.path}</b></color> bookmarked.");
+                }
             }
 
             SaveData(data);
@@ -451,7 +459,7 @@
             return left.name.CompareTo(right.name);
         }
 
-        [MenuItem("Assets/Pin Selected To Fav. Assets %&a")]
+        [MenuItem("Tools/Bookmark4Unity/Pin Selected To Fav. Assets %&a")]
         public static void PinSelectedToCollection()
         {
             Bookmark4UnityWindow.PinSelected();

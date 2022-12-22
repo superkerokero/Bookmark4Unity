@@ -4,6 +4,8 @@
 
 A simple unity editor tool to provide basic bookmarking for scene objects and project assets.
 
+[CHANGELOG](https://github.com/superkerokero/Bookmark4Unity/blob/master/Assets/Bookmark4Unity/CHANGELOG.md)
+
 ![](Images/screenshot.png)
 
 ## Install

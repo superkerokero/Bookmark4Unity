@@ -1,0 +1,5 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:VisualElement name="Root" style="height: 60px;">
+        <ui:ScrollView name="ScrollView" mode="Horizontal" horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Hidden" style="height: 60px; width: auto;" />
+    </ui:VisualElement>
+</ui:UXML>
