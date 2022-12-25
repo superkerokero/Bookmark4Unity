@@ -47,7 +47,7 @@
 
     // Ideally this would be a struct, but we need the ISerializationCallbackReciever
     [System.Serializable]
-    public class GuidReference : ISerializationCallbackReceiver
+    public class GuidReference : ISerializationCallbackReceiver, IEquatable<GuidReference>
     {
         // cache the referenced Game Object if we find one for performance
         private GameObject cachedReference;
@@ -159,5 +159,29 @@
             addDelegate = GuidAdded;
             removeDelegate = GuidRemoved;
         }
+
+        public override bool Equals(object obj) => this.Equals(obj as GuidReference);
+
+        public bool Equals(GuidReference other)
+        {
+            if (other is null) return false;
+            if (System.Object.ReferenceEquals(this, other)) return true;
+            return this.guid == other.guid;
+        }
+
+        public override int GetHashCode() => guid.GetHashCode();
+
+        public static bool operator ==(GuidReference lhs, GuidReference rhs)
+        {
+            if (lhs is null)
+            {
+                if (rhs is null) return true;
+                return false;
+            }
+
+            return lhs.Equals(rhs);
+        }
+
+        public static bool operator !=(GuidReference lhs, GuidReference rhs) => !(lhs == rhs);
     }
 }

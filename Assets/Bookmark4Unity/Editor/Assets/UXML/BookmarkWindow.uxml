@@ -1,0 +1,22 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <Style src="project://database/Assets/Bookmark4Unity/Editor/Assets/UXML/BookmarkWindow.uss?fileID=7433441132597879392&amp;guid=c2575018492804a408595d8f9445083b&amp;type=3#BookmarkWindow" />
+    <ui:VisualElement name="Menu" style="flex-direction: row;">
+        <ui:Button text="↓" display-tooltip-when-elided="true" name="SortBtnDesc" tooltip="Sort bookmarks in descending order" style="height: auto; width: 15px; background-color: rgba(88, 88, 88, 0); border-left-width: 0; border-right-width: 0; border-top-width: 0; border-bottom-width: 0; padding-left: 0; padding-right: 0; padding-top: 0; padding-bottom: 0; -unity-font-style: bold;" />
+        <ui:Button text="↑" display-tooltip-when-elided="true" name="SortBtnAsc" tooltip="Sort bookmarks in ascending order" style="height: auto; width: 15px; background-color: rgba(88, 88, 88, 0); border-left-width: 0; border-right-width: 0; border-top-width: 0; border-bottom-width: 0; padding-left: 0; padding-right: 0; padding-top: 0; padding-bottom: 0; -unity-font-style: bold;" />
+        <ui:VisualElement style="width: 100%;">
+            <ui:Button display-tooltip-when-elided="true" name="PinBtn" tooltip="Pin selected. (Shortcut: Alt+Ctrl+A / Option+Cmd+A)" text="Pin" style="padding-left: 0; padding-right: 0; padding-top: 0; padding-bottom: 0; margin-left: 0; margin-right: 0; margin-top: 0; margin-bottom: 0; background-color: rgb(156, 51, 61); -unity-font-style: bold; align-items: center;" />
+        </ui:VisualElement>
+        <ui:Button text="S" display-tooltip-when-elided="true" name="SaveBtn" tooltip="Save bookmarks to a collection file" style="height: auto; width: 15px; background-color: rgba(88, 88, 88, 0); border-left-width: 0; border-right-width: 0; border-top-width: 0; border-bottom-width: 0; padding-left: 0; padding-right: 0; padding-top: 0; padding-bottom: 0; -unity-font-style: bold;" />
+        <ui:Button text="L" display-tooltip-when-elided="true" name="LoadBtn" tooltip="Load bookmarks from a collection file" style="height: auto; width: 15px; background-color: rgba(88, 88, 88, 0); border-left-width: 0; border-right-width: 0; border-top-width: 0; border-bottom-width: 0; padding-left: 0; padding-right: 0; padding-top: 0; padding-bottom: 0; -unity-font-style: bold;" />
+    </ui:VisualElement>
+    <ui:VisualElement name="TabMenu" style="min-width: auto; min-height: auto; width: 100%;">
+        <ui:VisualElement name="Tabs" class="tabs" style="flex-direction: row; min-width: auto; min-height: auto;">
+            <ui:Button text="Assets" display-tooltip-when-elided="true" name="AssetTab" class="tab" style="flex-direction: column; width: 50%; margin-left: 0; margin-right: 0; margin-top: 0; margin-bottom: 0; padding-left: 0; padding-right: 0; padding-top: 0; padding-bottom: 0;" />
+            <ui:Button text="Scene Objects" display-tooltip-when-elided="true" name="SceneObjTab" class="tab" style="flex-direction: column; width: 50%; margin-left: 0; margin-right: 0; margin-top: 0; margin-bottom: 0; padding-left: 0; padding-right: 0; padding-top: 0; padding-bottom: 0;" />
+        </ui:VisualElement>
+        <ui:VisualElement name="TabContents" style="min-width: auto; min-height: auto;">
+            <ui:ScrollView name="AssetScrollView" />
+            <ui:ScrollView name="SceneObjScrollView" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

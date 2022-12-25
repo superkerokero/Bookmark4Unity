@@ -1,0 +1,12 @@
+.tab {
+    flex-grow: 1;
+}
+
+.currentlySelectedTab {
+    background-color: rgb(250, 85, 0);
+    -unity-font-style: bold;
+}
+
+.unselectedContent {
+    display: none;
+}

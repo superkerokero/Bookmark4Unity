@@ -3,8 +3,8 @@ using UnityEditor;
 using UnityEditor.Overlays;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
+using Scene = UnityEngine.SceneManagement.Scene;
 
 namespace Bookmark4Unity.Editor
 {

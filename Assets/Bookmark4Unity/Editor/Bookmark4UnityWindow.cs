@@ -1,29 +1,17 @@
 ﻿namespace Bookmark4Unity.Editor
 {
-    using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Runtime.Serialization.Formatters.Binary;
     using Bookmark4Unity.Guid;
     using UnityEditor;
+    using UnityEditor.SceneManagement;
     using UnityEngine;
+    using UnityEngine.SceneManagement;
+    using UnityEngine.UIElements;
     using Object = UnityEngine.Object;
-
-    public class BackgroundColorScope : IDisposable
-    {
-        private Color originalColor;
-        public BackgroundColorScope(Color backgroundColor)
-        {
-            originalColor = GUI.backgroundColor;
-            GUI.backgroundColor = backgroundColor;
-        }
-
-        public void Dispose()
-        {
-            GUI.backgroundColor = originalColor;
-        }
-    }
+    using Scene = UnityEngine.SceneManagement.Scene;
 
     public class Bookmark4UnityWindow : EditorWindow, IHasCustomMenu
     {
@@ -34,321 +22,251 @@
             public List<AssetData> assets = new();
         }
 
-        [System.Serializable]
-        public class AssetData : IEquatable<AssetData>
-        {
-            public string guid;
-            public string path;
-            public string name;
-            public string type;
-
-            public override bool Equals(object obj) => this.Equals(obj as AssetData);
-
-            public bool Equals(AssetData other)
-            {
-                if (other is null) return false;
-                if (System.Object.ReferenceEquals(this, other)) return true;
-                return this.guid == other.guid;
-            }
-
-            public override int GetHashCode() => guid.GetHashCode();
-
-            public static bool operator ==(AssetData lhs, AssetData rhs)
-            {
-                if (lhs is null)
-                {
-                    if (rhs is null) return true;
-                    return false;
-                }
-
-                return lhs.Equals(rhs);
-            }
-
-            public static bool operator !=(AssetData lhs, AssetData rhs) => !(lhs == rhs);
-        }
-
-        [SerializeField]
-        Dictionary<string, List<AssetData>> _assetsDataEntries = null;
-        Dictionary<string, List<AssetData>> AssetsDataEntries
-        {
-            get
-            {
-                if (_assetsDataEntries == null)
-                {
-                    LoadData();
-                }
-
-                return _assetsDataEntries;
-            }
-        }
-
-        [SerializeField]
-        Dictionary<string, List<GuidReference>> _guidDataEntries = null;
-        Dictionary<string, List<GuidReference>> GuidDataEntries
-        {
-            get
-            {
-                if (_guidDataEntries == null)
-                {
-                    LoadData();
-                }
-
-                return _guidDataEntries;
-            }
-        }
-
-
-        private bool sceneObjectFoldout = true;
-        private bool assetsFoldout = true;
-        private Vector2 scrollPosSceneObj = Vector2.zero;
-        private Vector2 scrollPosAssets = Vector2.zero;
+        private readonly Dictionary<string, AssetBookmarkGroup> assetBookmarkGroups = new();
+        private readonly Dictionary<string, SceneObjectBookmarkGroup> sceneObjectBookmarkGroups = new();
 
         public const string Name = "Bookmark4Unity";
         public static string Prefix => Application.productName + "_BOOKMARK4UNITY_";
         private static string PinnedKey => Prefix + "pinned";
-        private static string SceneObjectsFoldoutKey => Prefix + "sceneObjects";
-        private static string AssetsFoldoutKey => Prefix + "assets";
+        private static string IsAssetTabActiveKey => Prefix + "isAssetTabActive";
 
+        private const string UXML_GUID_BookmarkWindow = "7789041336e00410f91f040d6e09f772";
+        private const string USS_GUID_BookmarkWindow = "c2575018492804a408595d8f9445083b";
+        private const string UXML_GUID_BookmarkGroup = "8898fc16a31fe4cd7887b75843e59563";
+        private const string UXML_GUID_AssetBookmarkBtn = "71961e69d456347bd93e543583938f3c";
+        private const string UXML_GUID_SceneObjectBookmarkBtn = "95c8e9370e2d54333a3bb77afd33e6a7";
+
+        private VisualTreeAsset bookmarkGroupUxml;
+        private VisualTreeAsset assetBtnUxml;
+        private VisualTreeAsset sceneObjBtnUxml;
+
+        private const string currentlySelectedTabClassName = "currentlySelectedTab";
+        public const string HiddenContentClassName = "unselectedContent";
+
+        private Button assetTab;
+        private Button sceneObjTab;
+        private ScrollView assetScrollView;
+        private ScrollView sceneObjScrollView;
 
 
         [MenuItem("Tools/Bookmark4Unity/Open Bookmark Window")]
-        public static void ShowWindow()
+        public static void ShowMyEditor()
         {
             GetWindow<Bookmark4UnityWindow>(Name);
         }
 
+        private void CreateGUI()
+        {
+            // title
+            titleContent = new GUIContent(Name);
+
+            // apply uxml & uss
+            var uxml = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(AssetDatabase.GUIDToAssetPath(UXML_GUID_BookmarkWindow));
+            var uss = AssetDatabase.LoadAssetAtPath<StyleSheet>(AssetDatabase.GUIDToAssetPath(USS_GUID_BookmarkWindow));
+            bookmarkGroupUxml = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(AssetDatabase.GUIDToAssetPath(UXML_GUID_BookmarkGroup));
+            assetBtnUxml = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(AssetDatabase.GUIDToAssetPath(UXML_GUID_AssetBookmarkBtn));
+            sceneObjBtnUxml = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(AssetDatabase.GUIDToAssetPath(UXML_GUID_SceneObjectBookmarkBtn));
+            rootVisualElement.Add(uxml.Instantiate());
+            rootVisualElement.styleSheets.Add(uss);
+
+            // query element references
+            var pinBtn = rootVisualElement.Q<Button>("PinBtn");
+            var sortBtnDesc = rootVisualElement.Q<Button>("SortBtnDesc");
+            var sortBtnAsc = rootVisualElement.Q<Button>("SortBtnAsc");
+            var saveBtn = rootVisualElement.Q<Button>("SaveBtn");
+            var loadBtn = rootVisualElement.Q<Button>("LoadBtn");
+            assetTab = rootVisualElement.Q<Button>("AssetTab");
+            sceneObjTab = rootVisualElement.Q<Button>("SceneObjTab");
+            assetScrollView = rootVisualElement.Q<ScrollView>("AssetScrollView");
+            sceneObjScrollView = rootVisualElement.Q<ScrollView>("SceneObjScrollView");
+
+            // register callbacks
+            pinBtn.RegisterCallback<ClickEvent>(PinSelected);
+            sortBtnDesc.RegisterCallback<ClickEvent>(_ =>
+            {
+                foreach (var group in assetBookmarkGroups.Values)
+                {
+                    group.SortDesc();
+                }
+
+                foreach (var group in sceneObjectBookmarkGroups.Values)
+                {
+                    group.SortDesc();
+                }
+            });
+            sortBtnAsc.RegisterCallback<ClickEvent>(_ =>
+            {
+                foreach (var group in assetBookmarkGroups.Values)
+                {
+                    group.SortAsc();
+                }
+
+                foreach (var group in sceneObjectBookmarkGroups.Values)
+                {
+                    group.SortAsc();
+                }
+            });
+            saveBtn.RegisterCallback<ClickEvent>(_ => SaveDataToFile());
+            loadBtn.RegisterCallback<ClickEvent>(_ => LoadDataFromFile());
+            assetTab.RegisterCallback<ClickEvent>(ActivateAssetTab);
+            sceneObjTab.RegisterCallback<ClickEvent>(ActivateSceneObjTab);
+
+            // bookmark groups
+            LoadData();
+
+            // register scene change handler
+            EditorSceneManager.sceneOpened += OnSceneLoaded;
+            EditorSceneManager.sceneClosed += OnSceneClosed;
+        }
+
+        private void OnDestroy()
+        {
+            EditorSceneManager.sceneOpened -= OnSceneLoaded;
+            EditorSceneManager.sceneClosed -= OnSceneClosed;
+            SaveData();
+        }
+
+        private void OnSceneLoaded(Scene scene, OpenSceneMode mode)
+        {
+            UpdateSceneObjectFoldoutStatus();
+        }
+
+        private void OnSceneClosed(Scene scene)
+        {
+            UpdateSceneObjectFoldoutStatus();
+        }
+
+        private void UpdateSceneObjectFoldoutStatus()
+        {
+            var opendScenes = new HashSet<string>();
+            for (int i = 0; i < EditorSceneManager.sceneCount; i++)
+            {
+                opendScenes.Add(EditorSceneManager.GetSceneAt(i).name);
+            }
+            foreach (var group in sceneObjectBookmarkGroups.Values)
+            {
+                group.DataListView.RefreshItems();
+                group.Root.value = opendScenes.Contains(group.Root.text);
+            }
+        }
+
+        private void ActivateAssetTab(ClickEvent evt = null)
+        {
+            assetTab.AddToClassList(currentlySelectedTabClassName);
+            assetScrollView.RemoveFromClassList(HiddenContentClassName);
+            sceneObjTab.RemoveFromClassList(currentlySelectedTabClassName);
+            sceneObjScrollView.AddToClassList(HiddenContentClassName);
+        }
+
+        private void ActivateSceneObjTab(ClickEvent evt = null)
+        {
+            assetTab.RemoveFromClassList(currentlySelectedTabClassName);
+            assetScrollView.AddToClassList(HiddenContentClassName);
+            sceneObjTab.AddToClassList(currentlySelectedTabClassName);
+            sceneObjScrollView.RemoveFromClassList(HiddenContentClassName);
+        }
+
+        /// <summary>
+        /// Implement IHasCustomMenu interface
+        /// </summary>
+        /// <param name="menu">menu</param>
         void IHasCustomMenu.AddItemsToMenu(GenericMenu menu)
         {
             menu.AddItem(new GUIContent("Save Collections"), false, SaveDataToFile);
             menu.AddItem(new GUIContent("Load Collections"), false, LoadDataFromFile);
         }
 
-        public void OnGUI()
+        public void PinSelected(ClickEvent evt = null)
         {
-            using (new GUILayout.HorizontalScope(EditorStyles.helpBox))
+            if (Selection.activeTransform is null)
             {
-                if (GUILayout.Button(new GUIContent("▼", "Sort by name"), EditorStyles.toolbarButton, GUILayout.ExpandWidth(false)))
+                // add assets
+                foreach (string assetGUID in Selection.assetGUIDs)
                 {
-                    foreach (var list in _guidDataEntries.Values)
+                    var assetData = new AssetData
                     {
-                        list.Sort(GuidReferenceComparer);
-                    }
-
-                    foreach (var list in _assetsDataEntries.Values)
+                        guid = assetGUID,
+                        path = AssetDatabase.GUIDToAssetPath(assetGUID)
+                    };
+                    var asset = AssetDatabase.LoadAssetAtPath<Object>(assetData.path);
+                    assetData.name = asset.name;
+                    assetData.type = asset.GetType().ToString();
+                    if (assetBookmarkGroups.ContainsKey(assetData.type))
                     {
-                        list.Sort(AssetDataComparer);
-                    }
-                }
-
-                using (new BackgroundColorScope(Color.yellow))
-                {
-                    if (GUILayout.Button(new GUIContent("Pin Selected", "Shortcut: Alt+Ctrl+A/Alt+Cmd+A"), EditorStyles.miniButton))
-                    {
-                        PinSelected();
-                        LoadData();
-                        Repaint();
-                    }
-                }
-            }
-
-            using (var check = new EditorGUI.ChangeCheckScope())
-            {
-                // scene objects
-                sceneObjectFoldout = EditorGUILayout.Foldout(sceneObjectFoldout, "Scene Objects");
-                if (sceneObjectFoldout)
-                {
-                    using (var scrollView = new GUILayout.ScrollViewScope(scrollPosSceneObj))
-                    {
-                        scrollPosSceneObj = scrollView.scrollPosition;
-                        foreach (var data in GuidDataEntries)
+                        if (assetBookmarkGroups[assetData.type].Add(assetData))
                         {
-                            using (new GUILayout.VerticalScope(EditorStyles.helpBox))
-                            {
-                                GUILayout.Label(data.Key);
-                                foreach (var guidData in data.Value)
-                                {
-                                    if (DrawSceneObjectData(guidData)) return;
-                                }
-                            }
+                            Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: <color=yellow><b>{assetData.type}</b></color> asset <color=red><b>{assetData.path}</b></color> bookmarked.");
                         }
                     }
-                }
-
-                if (check.changed) EditorPrefs.SetBool(SceneObjectsFoldoutKey, sceneObjectFoldout);
-            }
-
-            using (var check = new EditorGUI.ChangeCheckScope())
-            {
-                // assets list
-                assetsFoldout = EditorGUILayout.Foldout(assetsFoldout, "Assets");
-                if (assetsFoldout)
-                {
-                    using (var scrollView = new GUILayout.ScrollViewScope(scrollPosAssets))
+                    else
                     {
-                        scrollPosAssets = scrollView.scrollPosition;
-                        foreach (var data in AssetsDataEntries)
-                        {
-                            using (new GUILayout.VerticalScope(EditorStyles.helpBox))
-                            {
-                                GUILayout.Label(data.Key);
-                                foreach (var assetData in data.Value)
-                                {
-                                    if (DrawAssetData(assetData)) return;
-                                }
-                            }
-                        }
+                        var group = new AssetBookmarkGroup(
+                            assetData.type,
+                            Random.ColorHSV(0f, 1f, 0.65f, 0.65f, 1f, 1f),
+                            new() { assetData },
+                            bookmarkGroupUxml,
+                            assetBtnUxml);
+                        assetBookmarkGroups[assetData.type] = group;
+                        assetScrollView.Add(group.Element);
+                        Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: <color=yellow><b>{assetData.type}</b></color> asset <color=red><b>{assetData.path}</b></color> bookmarked.");
                     }
                 }
 
-                if (check.changed) EditorPrefs.SetBool(AssetsFoldoutKey, assetsFoldout);
-            }
-        }
-
-        private bool DrawSceneObjectData(GuidReference reference)
-        {
-            var gameObject = reference.gameObject;
-            using (new GUILayout.HorizontalScope())
-            {
-                var style = EditorStyles.miniButtonLeft;
-                style.alignment = TextAnchor.MiddleLeft;
-                using (new EditorGUIUtility.IconSizeScope(Vector2.one * 16))
+                if (Selection.assetGUIDs.Length > 0)
                 {
-                    var icon = gameObject == null ? EditorGUIUtility.IconContent("console.warnicon").image : PrefabUtility.GetIconForGameObject(gameObject);
-                    if (GUILayout.Button(new GUIContent(" " + reference.CachedName, icon, reference.CachedSceneName), style, GUILayout.Height(18)))
-                    {
-                        if (gameObject != null)
-                        {
-                            Selection.activeGameObject = gameObject;
-                        }
-                        else
-                        {
-                            if (EditorUtility.DisplayDialog(Name, "Selected game object dows not exist on current scene, remove it from list?", "Yes", "No"))
-                            {
-                                RemovePin(reference);
-                                return true;
-                            }
-                        }
-                    }
+                    ActivateAssetTab();
+                    SaveData();
                 }
-
-                using (new BackgroundColorScope(Color.red))
-                {
-                    if (GUILayout.Button(new GUIContent("☓", "Un-pin"), GUILayout.ExpandWidth(false)))
-                    {
-                        RemovePin(reference);
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        private bool DrawAssetData(AssetData assetData)
-        {
-            using (new GUILayout.HorizontalScope())
-            {
-                var style = EditorStyles.miniButtonLeft;
-                style.alignment = TextAnchor.MiddleLeft;
-                using (new EditorGUIUtility.IconSizeScope(Vector2.one * 16))
-                {
-                    if (GUILayout.Button(new GUIContent(" " + assetData.name, AssetDatabase.GetCachedIcon(assetData.path), assetData.path), style, GUILayout.Height(18)))
-                    {
-                        var asset = AssetDatabase.LoadAssetAtPath<Object>(assetData.path);
-                        EditorGUIUtility.PingObject(asset);
-                        Selection.activeObject = asset;
-                    }
-                }
-
-                using (new BackgroundColorScope(Color.green))
-                {
-                    if (GUILayout.Button(new GUIContent("⎋", "Open asset"), GUILayout.ExpandWidth(false)))
-                    {
-                        if (!Path.GetExtension(assetData.path).Equals(".unity"))
-                        {
-                            // EditorUtility.OpenWithDefaultApp(assetData.path);
-                            var asset = AssetDatabase.LoadAssetAtPath<Object>(assetData.path);
-                            AssetDatabase.OpenAsset(asset);
-                        }
-                        else
-                        {
-                            UnityEditor.SceneManagement.EditorSceneManager.OpenScene(assetData.path, UnityEditor.SceneManagement.OpenSceneMode.Single);
-                        }
-                    }
-                }
-
-                using (new BackgroundColorScope(Color.red))
-                {
-                    if (GUILayout.Button(new GUIContent("☓", "Un-pin"), GUILayout.ExpandWidth(false)))
-                    {
-                        RemovePin(assetData);
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        public static void PinSelected()
-        {
-            // load data
-            DataWrapper data;
-            if (EditorPrefs.HasKey(PinnedKey))
-            {
-                data = JsonUtility.FromJson<DataWrapper>(EditorPrefs.GetString(PinnedKey));
             }
             else
             {
-                data = new DataWrapper();
-            }
-
-            // add scene objects
-            foreach (var trans in Selection.transforms)
-            {
-                var gameObj = trans.gameObject;
-                var guidComponent = gameObj.GetComponent<GuidComponent>();
-                if (guidComponent == null) guidComponent = gameObj.AddComponent<GuidComponent>();
-                var guidReference = new GuidReference(guidComponent);
-                var guidData = guidReference.ToData();
-                if (!data.references.Contains(guidData))
+                // add scene objects
+                foreach (var trans in Selection.transforms)
                 {
-                    data.references.Add(guidData);
-                    Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: [<color=yellow><b>{guidData.cachedScene}</b></color>] Scene object <color=red><b>{guidData.cachedName}</b></color> bookmarked.");
+                    var gameObj = trans.gameObject;
+                    var guidComponent = gameObj.GetComponent<GuidComponent>();
+                    if (guidComponent == null) guidComponent = gameObj.AddComponent<GuidComponent>();
+                    var reference = new GuidReference(guidComponent);
+                    if (sceneObjectBookmarkGroups.ContainsKey(reference.CachedSceneName))
+                    {
+                        if (sceneObjectBookmarkGroups[reference.CachedSceneName].Add(reference))
+                        {
+                            Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: [<color=yellow><b>{reference.CachedSceneName}</b></color>] Scene object <color=red><b>{reference.CachedName}</b></color> bookmarked.");
+                        }
+                    }
+                    else
+                    {
+                        var group = new SceneObjectBookmarkGroup(
+                            reference.CachedSceneName,
+                            Random.ColorHSV(0f, 1f, 0.65f, 0.65f, 1f, 1f),
+                            new() { reference },
+                            bookmarkGroupUxml,
+                            sceneObjBtnUxml);
+                        sceneObjectBookmarkGroups[reference.CachedSceneName] = group;
+                        sceneObjScrollView.Add(group.Element);
+                        Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: [<color=yellow><b>{reference.CachedSceneName}</b></color>] Scene object <color=red><b>{reference.CachedName}</b></color> bookmarked.");
+                    }
+                }
+
+                if (Selection.transforms.Length > 0)
+                {
+                    ActivateSceneObjTab();
+                    SaveData();
                 }
             }
-
-            // add assets
-            foreach (string assetGUID in Selection.assetGUIDs)
-            {
-                var assetData = new AssetData();
-                assetData.guid = assetGUID;
-                assetData.path = AssetDatabase.GUIDToAssetPath(assetGUID);
-                var asset = AssetDatabase.LoadAssetAtPath<Object>(assetData.path);
-                assetData.name = asset.name;
-                assetData.type = asset.GetType().ToString();
-                if (!data.assets.Contains(assetData))
-                {
-                    data.assets.Add(assetData);
-                    Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: <color=yellow><b>{assetData.type}</b></color> asset <color=red><b>{assetData.path}</b></color> bookmarked.");
-                }
-            }
-
-            SaveData(data);
         }
 
         private DataWrapper GetCurrentData()
         {
             var data = new DataWrapper();
-
-            foreach (var item in GuidDataEntries.Values)
+            foreach (var group in sceneObjectBookmarkGroups.Values)
             {
-                data.references.AddRange(item.Select(reference => reference.ToData()));
+                data.references.AddRange(group.Data.Select(reference => reference.ToData()));
             }
 
-            foreach (var item in AssetsDataEntries.Values)
+            foreach (var group in assetBookmarkGroups.Values)
             {
-                data.assets.AddRange(item);
+                data.assets.AddRange(group.Data);
             }
 
             return data;
@@ -356,32 +274,53 @@
 
         public void LoadData(DataWrapper data)
         {
-            _guidDataEntries.Clear();
-            _assetsDataEntries.Clear();
-
-            foreach (var reference in data.references)
-            {
-                if (_guidDataEntries.ContainsKey(reference.cachedScene))
-                {
-                    _guidDataEntries[reference.cachedScene].Add(new GuidReference(reference));
-                }
-                else
-                {
-                    _guidDataEntries[reference.cachedScene] = new List<GuidReference>() { new GuidReference(reference) };
-                }
-            }
-
+            // update asset bookmark groups
             foreach (var asset in data.assets)
             {
-                if (_assetsDataEntries.ContainsKey(asset.type))
+                if (assetBookmarkGroups.ContainsKey(asset.type))
                 {
-                    _assetsDataEntries[asset.type].Add(asset);
+                    assetBookmarkGroups[asset.type].Add(asset);
                 }
                 else
                 {
-                    _assetsDataEntries[asset.type] = new List<AssetData>() { asset };
+                    var group = new AssetBookmarkGroup(
+                        asset.type,
+                        Random.ColorHSV(0f, 1f, 0.65f, 0.65f, 1f, 1f),
+                        new() { asset },
+                        bookmarkGroupUxml,
+                        assetBtnUxml);
+                    assetBookmarkGroups[asset.type] = group;
+                    assetScrollView.Add(group.Element);
                 }
             }
+
+            // update scene object bookmark groups
+            foreach (var reference in data.references)
+            {
+                if (sceneObjectBookmarkGroups.ContainsKey(reference.cachedScene))
+                {
+                    sceneObjectBookmarkGroups[reference.cachedScene].Add(new GuidReference(reference));
+                }
+                else
+                {
+                    var group = new SceneObjectBookmarkGroup(
+                        reference.cachedScene,
+                        Random.ColorHSV(0f, 1f, 0.65f, 0.65f, 1f, 1f),
+                        new() { new GuidReference(reference) },
+                        bookmarkGroupUxml,
+                        sceneObjBtnUxml);
+                    sceneObjectBookmarkGroups[reference.cachedScene] = group;
+                    sceneObjScrollView.Add(group.Element);
+                }
+            }
+
+            UpdateSceneObjectFoldoutStatus();
+        }
+
+        public void SaveData()
+        {
+            SaveData(GetCurrentData());
+            EditorPrefs.SetBool(IsAssetTabActiveKey, assetTab.ClassListContains(currentlySelectedTabClassName));
         }
 
         public static void SaveData(DataWrapper data)
@@ -391,17 +330,28 @@
 
         public void LoadData()
         {
-            _guidDataEntries = new Dictionary<string, List<GuidReference>>();
-            _assetsDataEntries = new Dictionary<string, List<AssetData>>();
-
             if (EditorPrefs.HasKey(PinnedKey))
             {
                 var data = JsonUtility.FromJson<DataWrapper>(EditorPrefs.GetString(PinnedKey));
                 LoadData(data);
             }
 
-            if (EditorPrefs.HasKey(SceneObjectsFoldoutKey)) sceneObjectFoldout = EditorPrefs.GetBool(SceneObjectsFoldoutKey);
-            if (EditorPrefs.HasKey(AssetsFoldoutKey)) assetsFoldout = EditorPrefs.GetBool(AssetsFoldoutKey);
+            if (EditorPrefs.HasKey(IsAssetTabActiveKey))
+            {
+                var state = EditorPrefs.GetBool(IsAssetTabActiveKey);
+                if (state)
+                {
+                    ActivateAssetTab();
+                }
+                else
+                {
+                    ActivateSceneObjTab();
+                }
+            }
+            else
+            {
+                ActivateAssetTab();
+            }
         }
 
         private void SaveDataToFile()
@@ -428,46 +378,63 @@
                 var data = converter.Deserialize(dataStream) as DataWrapper;
                 LoadData(data);
             }
-
-            SaveData(GetCurrentData());
         }
 
-        private void RemovePin(GuidReference reference)
-        {
-            _guidDataEntries[reference.CachedSceneName].Remove(reference);
-            if (_guidDataEntries[reference.CachedSceneName].Count == 0) _guidDataEntries.Remove(reference.CachedSceneName);
-            if (reference.gameObject != null) DestroyImmediate(reference.gameObject.GetComponent<GuidComponent>());
-
-            SaveData(GetCurrentData());
-        }
-
-        private void RemovePin(AssetData assetData)
-        {
-            _assetsDataEntries[assetData.type].Remove(assetData);
-            if (_assetsDataEntries[assetData.type].Count == 0) _assetsDataEntries.Remove(assetData.type);
-            SaveData(GetCurrentData());
-        }
-
-        private int GuidReferenceComparer(GuidReference left, GuidReference right)
-        {
-            if (left.gameObject == null || right.gameObject == null) return 0;
-            return left.gameObject.name.CompareTo(right.gameObject.name);
-        }
-
-        private int AssetDataComparer(AssetData left, AssetData right)
-        {
-            return left.name.CompareTo(right.name);
-        }
-
-        [MenuItem("Tools/Bookmark4Unity/Pin Selected To Fav. Assets %&a")]
+        [MenuItem("Tools/Bookmark4Unity/Pin Selected %&a")]
         public static void PinSelectedToCollection()
         {
-            Bookmark4UnityWindow.PinSelected();
             if (EditorWindow.HasOpenInstances<Bookmark4UnityWindow>())
             {
                 var window = GetWindow<Bookmark4UnityWindow>(Name);
-                window.LoadData();
-                window.Repaint();
+                window.PinSelected();
+            }
+            else
+            {
+                // load data
+                DataWrapper data;
+                if (EditorPrefs.HasKey(PinnedKey))
+                {
+                    data = JsonUtility.FromJson<DataWrapper>(EditorPrefs.GetString(PinnedKey));
+                }
+                else
+                {
+                    data = new DataWrapper();
+                }
+
+                // add scene objects
+                foreach (var trans in Selection.transforms)
+                {
+                    var gameObj = trans.gameObject;
+                    var guidComponent = gameObj.GetComponent<GuidComponent>();
+                    if (guidComponent == null) guidComponent = gameObj.AddComponent<GuidComponent>();
+                    var guidReference = new GuidReference(guidComponent);
+                    var guidData = guidReference.ToData();
+                    if (!data.references.Contains(guidData))
+                    {
+                        data.references.Add(guidData);
+                        Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: [<color=yellow><b>{guidData.cachedScene}</b></color>] Scene object <color=red><b>{guidData.cachedName}</b></color> bookmarked.");
+                    }
+                }
+
+                // add assets
+                foreach (string assetGUID in Selection.assetGUIDs)
+                {
+                    var assetData = new AssetData
+                    {
+                        guid = assetGUID,
+                        path = AssetDatabase.GUIDToAssetPath(assetGUID)
+                    };
+                    var asset = AssetDatabase.LoadAssetAtPath<Object>(assetData.path);
+                    assetData.name = asset.name;
+                    assetData.type = asset.GetType().ToString();
+                    if (!data.assets.Contains(assetData))
+                    {
+                        data.assets.Add(assetData);
+                        Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: <color=yellow><b>{assetData.type}</b></color> asset <color=red><b>{assetData.path}</b></color> bookmarked.");
+                    }
+                }
+
+                SaveData(data);
             }
         }
     }
