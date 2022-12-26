@@ -52,11 +52,13 @@ namespace Bookmark4Unity.Editor
                 if (pingActions.ContainsKey(i)) btn.UnregisterCallback<ClickEvent>(pingActions[i]);
                 pingActions[i] = evt => Ping(index);
                 btn.RegisterCallback<ClickEvent>(pingActions[i]);
+                btn.tooltip = $"Select \"{data.CachedName}\"";
 
                 // del
                 if (delActions.ContainsKey(i)) del.UnregisterCallback<ClickEvent>(delActions[i]);
                 delActions[i] = evt => Remove(index);
                 del.RegisterCallback<ClickEvent>(delActions[i]);
+                del.tooltip = $"Unpin \"{data.CachedName}\"";
 
                 // drag
                 if (dragActions.ContainsKey(i)) btn.UnregisterCallback<PointerLeaveEvent>(dragActions[i]);

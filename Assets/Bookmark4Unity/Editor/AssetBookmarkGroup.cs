@@ -49,6 +49,7 @@ namespace Bookmark4Unity.Editor
                     iconImage);
                 del.style.backgroundImage = Background.FromTexture2D(SceneViewBookmarkManager.SceneViewEmptyIcon);
                 btn.text = data.name;
+                btn.tooltip = $"Ping \"{data.name}\"";
 
                 // ping
                 if (pingActions.ContainsKey(i)) btn.UnregisterCallback<ClickEvent>(pingActions[i]);
@@ -59,11 +60,13 @@ namespace Bookmark4Unity.Editor
                 if (openActions.ContainsKey(i)) open.UnregisterCallback<ClickEvent>(openActions[i]);
                 openActions[i] = evt => Open(index);
                 open.RegisterCallback<ClickEvent>(openActions[i]);
+                open.tooltip = $"Open \"{data.name}\"";
 
                 // del
                 if (delActions.ContainsKey(i)) del.UnregisterCallback<ClickEvent>(delActions[i]);
                 delActions[i] = evt => Remove(index);
                 del.RegisterCallback<ClickEvent>(delActions[i]);
+                del.tooltip = $"Unpin \"{data.name}\"";
 
                 // drag
                 if (dragActions.ContainsKey(i)) btn.UnregisterCallback<PointerLeaveEvent>(dragActions[i]);

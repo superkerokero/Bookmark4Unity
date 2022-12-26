@@ -20,6 +20,8 @@
         {
             public List<GuidData> references = new();
             public List<AssetData> assets = new();
+            public List<string> closedAssetTypes = new();
+            public bool isAssetTabActive;
         }
 
         private readonly Dictionary<string, AssetBookmarkGroup> assetBookmarkGroups = new();
@@ -28,7 +30,8 @@
         public const string Name = "Bookmark4Unity";
         public static string Prefix => Application.productName + "_BOOKMARK4UNITY_";
         private static string PinnedKey => Prefix + "pinned";
-        private static string IsAssetTabActiveKey => Prefix + "isAssetTabActive";
+
+        public bool IsAssetTabActive => assetTab is not null && assetTab.ClassListContains(currentlySelectedTabClassName);
 
         private const string UXML_GUID_BookmarkWindow = "7789041336e00410f91f040d6e09f772";
         private const string USS_GUID_BookmarkWindow = "c2575018492804a408595d8f9445083b";
@@ -84,26 +87,44 @@
             pinBtn.RegisterCallback<ClickEvent>(PinSelected);
             sortBtnDesc.RegisterCallback<ClickEvent>(_ =>
             {
-                foreach (var group in assetBookmarkGroups.Values)
+                if (IsAssetTabActive)
                 {
-                    group.SortDesc();
-                }
+                    foreach (var group in assetBookmarkGroups.Values)
+                    {
+                        group.SortDesc();
+                    }
 
-                foreach (var group in sceneObjectBookmarkGroups.Values)
+                    assetScrollView.SortFoldoutsDesc();
+                }
+                else
                 {
-                    group.SortDesc();
+                    foreach (var group in sceneObjectBookmarkGroups.Values)
+                    {
+                        group.SortDesc();
+                    }
+
+                    sceneObjScrollView.SortFoldoutsDesc();
                 }
             });
             sortBtnAsc.RegisterCallback<ClickEvent>(_ =>
             {
-                foreach (var group in assetBookmarkGroups.Values)
+                if (IsAssetTabActive)
                 {
-                    group.SortAsc();
-                }
+                    foreach (var group in assetBookmarkGroups.Values)
+                    {
+                        group.SortAsc();
+                    }
 
-                foreach (var group in sceneObjectBookmarkGroups.Values)
+                    assetScrollView.SortFoldoutsAsc();
+                }
+                else
                 {
-                    group.SortAsc();
+                    foreach (var group in sceneObjectBookmarkGroups.Values)
+                    {
+                        group.SortAsc();
+                    }
+
+                    sceneObjScrollView.SortFoldoutsAsc();
                 }
             });
             saveBtn.RegisterCallback<ClickEvent>(_ => SaveDataToFile());
@@ -117,12 +138,14 @@
             // register scene change handler
             EditorSceneManager.sceneOpened += OnSceneLoaded;
             EditorSceneManager.sceneClosed += OnSceneClosed;
+            EditorApplication.quitting += OnDestroy;
         }
 
         private void OnDestroy()
         {
             EditorSceneManager.sceneOpened -= OnSceneLoaded;
             EditorSceneManager.sceneClosed -= OnSceneClosed;
+            EditorApplication.quitting -= OnDestroy;
             SaveData();
         }
 
@@ -267,8 +290,10 @@
             foreach (var group in assetBookmarkGroups.Values)
             {
                 data.assets.AddRange(group.Data);
+                if (!group.Root.value) data.closedAssetTypes.Add(group.Root.text);
             }
 
+            data.isAssetTabActive = IsAssetTabActive;
             return data;
         }
 
@@ -314,13 +339,28 @@
                 }
             }
 
+            // closed asset type foldouts
+            foreach (var assetType in data.closedAssetTypes)
+            {
+                if (assetBookmarkGroups.ContainsKey(assetType)) assetBookmarkGroups[assetType].Root.value = false;
+            }
+
+            // activate tabs
+            if (data.isAssetTabActive)
+            {
+                ActivateAssetTab();
+            }
+            else
+            {
+                ActivateSceneObjTab();
+            }
+
             UpdateSceneObjectFoldoutStatus();
         }
 
         public void SaveData()
         {
             SaveData(GetCurrentData());
-            EditorPrefs.SetBool(IsAssetTabActiveKey, assetTab.ClassListContains(currentlySelectedTabClassName));
         }
 
         public static void SaveData(DataWrapper data)
@@ -334,23 +374,6 @@
             {
                 var data = JsonUtility.FromJson<DataWrapper>(EditorPrefs.GetString(PinnedKey));
                 LoadData(data);
-            }
-
-            if (EditorPrefs.HasKey(IsAssetTabActiveKey))
-            {
-                var state = EditorPrefs.GetBool(IsAssetTabActiveKey);
-                if (state)
-                {
-                    ActivateAssetTab();
-                }
-                else
-                {
-                    ActivateSceneObjTab();
-                }
-            }
-            else
-            {
-                ActivateAssetTab();
             }
         }
 

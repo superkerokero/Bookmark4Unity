@@ -148,7 +148,7 @@ namespace Bookmark4Unity.Editor
             SceneViewBookmarkManager.SetBookmarkEvent -= OnSetBookmark;
 
             // unload unused assets
-            EditorUtility.UnloadUnusedAssetsImmediate();
+            // EditorUtility.UnloadUnusedAssetsImmediate();
         }
 
         public override VisualElement CreatePanelContent()
