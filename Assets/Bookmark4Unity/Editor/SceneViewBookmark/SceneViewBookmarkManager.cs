@@ -10,6 +10,7 @@ namespace Bookmark4Unity.Editor
     {
         public static event Action<int> MoveToBookMarkEvent;
         public static event Action<int, SceneViewCameraBookmark, Texture2D> SetBookmarkEvent;
+        public static event Action ClearBookmarksEvent;
         private const string SceneViewBookmarkIconBlackGUID = "94a274db694b5477d98a39cc07008f41";
         private const string SceneViewBookmarkIconWhiteGUID = "0dcf460af82ad477f8e42045d0e34711";
         private const string SceneViewEmptyIconGUID = "fede30e0a177c49e9bd9a9ef612d58ad";
@@ -100,6 +101,17 @@ namespace Bookmark4Unity.Editor
             var previewCapture = SceneViewScreenCapture();
             var bookmark = new SceneViewCameraBookmark(SceneView.lastActiveSceneView, previewCapture);
             SetBookmark(bookmark, slot, previewCapture);
+        }
+
+        public static void ClearAllBookmarksForCurrentScene()
+        {
+            for (int i = 0; i <= maxBookmarkCount; i++)
+            {
+                var key = GetEditorPrefsKey(i);
+                EditorPrefs.DeleteKey(key);
+            }
+
+            ClearBookmarksEvent?.Invoke();
         }
 
         static string GetEditorPrefsKey(int slot)

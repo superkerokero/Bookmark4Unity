@@ -47,6 +47,11 @@ namespace Bookmark4Unity.Editor
             SceneViewBookmarkManager.SetBookmark(slot);
         }
 
+        static void HandleClearAllBookmarks()
+        {
+            SceneViewBookmarkManager.ClearAllBookmarksForCurrentScene();
+        }
+
         private void ShowMenu()
         {
             var menu = new GenericMenu();
@@ -84,6 +89,9 @@ namespace Bookmark4Unity.Editor
             {
                 menu.AddItem(new GUIContent($"Set Bookmark {slot} &#{slot}"), false, HandleSetBookmark, slot);
             }
+
+            menu.AddSeparator(string.Empty);
+            menu.AddItem(new GUIContent($"Clear All Bookmarks"), false, HandleClearAllBookmarks);
 
             menu.ShowAsContext();
         }

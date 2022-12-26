@@ -9,12 +9,12 @@
         <ui:Button text="S" display-tooltip-when-elided="true" name="SaveBtn" tooltip="Save bookmarks to a collection file" style="height: auto; width: 15px; background-color: rgba(88, 88, 88, 0); border-left-width: 0; border-right-width: 0; border-top-width: 0; border-bottom-width: 0; padding-left: 0; padding-right: 0; padding-top: 0; padding-bottom: 0; -unity-font-style: bold;" />
         <ui:Button text="L" display-tooltip-when-elided="true" name="LoadBtn" tooltip="Load bookmarks from a collection file" style="height: auto; width: 15px; background-color: rgba(88, 88, 88, 0); border-left-width: 0; border-right-width: 0; border-top-width: 0; border-bottom-width: 0; padding-left: 0; padding-right: 0; padding-top: 0; padding-bottom: 0; -unity-font-style: bold;" />
     </ui:VisualElement>
-    <ui:VisualElement name="TabMenu" style="min-width: auto; min-height: auto; width: 100%;">
-        <ui:VisualElement name="Tabs" class="tabs" style="flex-direction: row; min-width: auto; min-height: auto;">
+    <ui:VisualElement name="TabMenu" style="min-width: auto; min-height: auto; width: 100%; flex-grow: 0; flex-shrink: 1; height: auto;">
+        <ui:VisualElement name="Tabs" class="tabs" style="flex-direction: row; min-width: auto; min-height: auto; flex-grow: 1; flex-shrink: 0;">
             <ui:Button text="Assets" display-tooltip-when-elided="true" name="AssetTab" class="tab" style="flex-direction: column; width: 50%; margin-left: 0; margin-right: 0; margin-top: 0; margin-bottom: 0; padding-left: 0; padding-right: 0; padding-top: 0; padding-bottom: 0;" />
             <ui:Button text="Scene Objects" display-tooltip-when-elided="true" name="SceneObjTab" class="tab" style="flex-direction: column; width: 50%; margin-left: 0; margin-right: 0; margin-top: 0; margin-bottom: 0; padding-left: 0; padding-right: 0; padding-top: 0; padding-bottom: 0;" />
         </ui:VisualElement>
-        <ui:VisualElement name="TabContents" style="min-width: auto; min-height: auto;">
+        <ui:VisualElement name="TabContents" style="min-width: auto; min-height: auto; flex-grow: 0; flex-shrink: 1; height: auto;">
             <ui:ScrollView name="AssetScrollView" />
             <ui:ScrollView name="SceneObjScrollView" />
         </ui:VisualElement>

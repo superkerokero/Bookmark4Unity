@@ -90,6 +90,7 @@ namespace Bookmark4Unity.Editor
 
             // subscribe to events
             EditorSceneManager.activeSceneChangedInEditMode += OnActiveSceneChanged;
+            SceneViewBookmarkManager.ClearBookmarksEvent += OnClearBookmarks;
             SceneViewBookmarkManager.MoveToBookMarkEvent += OnMoveToBookmark;
             SceneViewBookmarkManager.SetBookmarkEvent += OnSetBookmark;
         }
@@ -110,6 +111,18 @@ namespace Bookmark4Unity.Editor
                     moveToBtns[i].style.backgroundImage = new StyleBackground(SceneViewBookmarkManager.SceneViewEmptyIcon);
                     moveToBtns[i].text = "";
                 }
+            }
+
+            moveToBtns[prevIndex].style.borderTopColor = Color.grey;
+            prevIndex = 0;
+        }
+
+        private void OnClearBookmarks()
+        {
+            for (int i = 0; i <= SceneViewBookmarkManager.maxBookmarkCount; i++)
+            {
+                moveToBtns[i].style.backgroundImage = new StyleBackground(SceneViewBookmarkManager.SceneViewEmptyIcon);
+                moveToBtns[i].text = "";
             }
 
             moveToBtns[prevIndex].style.borderTopColor = Color.grey;
@@ -144,6 +157,7 @@ namespace Bookmark4Unity.Editor
 
             // unsubscribe events
             EditorSceneManager.activeSceneChangedInEditMode -= OnActiveSceneChanged;
+            SceneViewBookmarkManager.ClearBookmarksEvent -= OnClearBookmarks;
             SceneViewBookmarkManager.MoveToBookMarkEvent -= OnMoveToBookmark;
             SceneViewBookmarkManager.SetBookmarkEvent -= OnSetBookmark;
 

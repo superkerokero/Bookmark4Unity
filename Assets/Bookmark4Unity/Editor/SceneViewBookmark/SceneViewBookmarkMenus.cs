@@ -61,6 +61,9 @@ namespace Bookmark4Unity.Editor
         [MenuItem("Tools/Bookmark4Unity/Scene View Bookmarks/Set Bookmark 9 #&9", false, 300)]
         static void SetBookmark9() => SceneViewBookmarkManager.SetBookmark(9);
 
+        [MenuItem("Tools/Bookmark4Unity/Scene View Bookmarks/Clear All Bookmarks", false, 400)]
+        static void ClearAllBookmarks() => SceneViewBookmarkManager.ClearAllBookmarksForCurrentScene();
+
         #region Validation
 
         [MenuItem("Tools/Bookmark4Unity/Scene View Bookmarks/Move to Bookmark 1 &1", true)]

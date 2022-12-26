@@ -72,6 +72,32 @@
             rootVisualElement.Add(uxml.Instantiate());
             rootVisualElement.styleSheets.Add(uss);
 
+            // drag and drop
+            rootVisualElement.RegisterCallback<DragUpdatedEvent>(evt => DragAndDrop.visualMode = DragAndDropVisualMode.Copy);
+            rootVisualElement.RegisterCallback<DragPerformEvent>(evt =>
+            {
+                foreach (var obj in DragAndDrop.objectReferences)
+                {
+                    // assets
+                    if (AssetDatabase.Contains(obj))
+                    {
+                        var guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(obj));
+                        PinAsset(guid);
+                        ActivateAssetTab();
+                        continue;
+                    }
+
+                    // game objects
+                    if (obj is GameObject go && go.transform is not null)
+                    {
+                        PinTransform(go.transform);
+                        ActivateSceneObjTab();
+                    }
+                }
+
+                SaveData();
+            });
+
             // query element references
             var pinBtn = rootVisualElement.Q<Button>("PinBtn");
             var sortBtnDesc = rootVisualElement.Q<Button>("SortBtnDesc");
@@ -197,6 +223,9 @@
         {
             menu.AddItem(new GUIContent("Save Collections"), false, SaveDataToFile);
             menu.AddItem(new GUIContent("Load Collections"), false, LoadDataFromFile);
+            menu.AddItem(new GUIContent("Clear/All Bookmarks"), false, ClearAllBookmarks);
+            menu.AddItem(new GUIContent("Clear/Asset Bookmarks"), false, ClearAssetBookmarks);
+            menu.AddItem(new GUIContent("Clear/Scene Object Bookmarks"), false, ClearSceneObjectBookmarks);
         }
 
         public void PinSelected(ClickEvent evt = null)
@@ -206,33 +235,7 @@
                 // add assets
                 foreach (string assetGUID in Selection.assetGUIDs)
                 {
-                    var assetData = new AssetData
-                    {
-                        guid = assetGUID,
-                        path = AssetDatabase.GUIDToAssetPath(assetGUID)
-                    };
-                    var asset = AssetDatabase.LoadAssetAtPath<Object>(assetData.path);
-                    assetData.name = asset.name;
-                    assetData.type = asset.GetType().ToString();
-                    if (assetBookmarkGroups.ContainsKey(assetData.type))
-                    {
-                        if (assetBookmarkGroups[assetData.type].Add(assetData))
-                        {
-                            Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: <color=yellow><b>{assetData.type}</b></color> asset <color=red><b>{assetData.path}</b></color> bookmarked.");
-                        }
-                    }
-                    else
-                    {
-                        var group = new AssetBookmarkGroup(
-                            assetData.type,
-                            Random.ColorHSV(0f, 1f, 0.65f, 0.65f, 1f, 1f),
-                            new() { assetData },
-                            bookmarkGroupUxml,
-                            assetBtnUxml);
-                        assetBookmarkGroups[assetData.type] = group;
-                        assetScrollView.Add(group.Element);
-                        Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: <color=yellow><b>{assetData.type}</b></color> asset <color=red><b>{assetData.path}</b></color> bookmarked.");
-                    }
+                    PinAsset(assetGUID);
                 }
 
                 if (Selection.assetGUIDs.Length > 0)
@@ -246,29 +249,7 @@
                 // add scene objects
                 foreach (var trans in Selection.transforms)
                 {
-                    var gameObj = trans.gameObject;
-                    var guidComponent = gameObj.GetComponent<GuidComponent>();
-                    if (guidComponent == null) guidComponent = gameObj.AddComponent<GuidComponent>();
-                    var reference = new GuidReference(guidComponent);
-                    if (sceneObjectBookmarkGroups.ContainsKey(reference.CachedSceneName))
-                    {
-                        if (sceneObjectBookmarkGroups[reference.CachedSceneName].Add(reference))
-                        {
-                            Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: [<color=yellow><b>{reference.CachedSceneName}</b></color>] Scene object <color=red><b>{reference.CachedName}</b></color> bookmarked.");
-                        }
-                    }
-                    else
-                    {
-                        var group = new SceneObjectBookmarkGroup(
-                            reference.CachedSceneName,
-                            Random.ColorHSV(0f, 1f, 0.65f, 0.65f, 1f, 1f),
-                            new() { reference },
-                            bookmarkGroupUxml,
-                            sceneObjBtnUxml);
-                        sceneObjectBookmarkGroups[reference.CachedSceneName] = group;
-                        sceneObjScrollView.Add(group.Element);
-                        Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: [<color=yellow><b>{reference.CachedSceneName}</b></color>] Scene object <color=red><b>{reference.CachedName}</b></color> bookmarked.");
-                    }
+                    PinTransform(trans);
                 }
 
                 if (Selection.transforms.Length > 0)
@@ -276,6 +257,66 @@
                     ActivateSceneObjTab();
                     SaveData();
                 }
+            }
+        }
+
+        private void PinTransform(Transform trans)
+        {
+            var gameObj = trans.gameObject;
+            var guidComponent = gameObj.GetComponent<GuidComponent>();
+            if (guidComponent == null) guidComponent = gameObj.AddComponent<GuidComponent>();
+            var reference = new GuidReference(guidComponent);
+            if (sceneObjectBookmarkGroups.ContainsKey(reference.CachedSceneName))
+            {
+                if (sceneObjectBookmarkGroups[reference.CachedSceneName].Add(reference))
+                {
+                    Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: [<color=yellow><b>{reference.CachedSceneName}</b></color>] Scene object <color=red><b>{reference.CachedName}</b></color> bookmarked.");
+                }
+            }
+            else
+            {
+                var group = new SceneObjectBookmarkGroup(
+                    reference.CachedSceneName,
+                    Random.ColorHSV(0f, 1f, 0.65f, 0.65f, 1f, 1f),
+                    new() { reference },
+                    bookmarkGroupUxml,
+                    sceneObjBtnUxml);
+                sceneObjectBookmarkGroups[reference.CachedSceneName] = group;
+                sceneObjScrollView.Add(group.Element);
+                Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: [<color=yellow><b>{reference.CachedSceneName}</b></color>] Scene object <color=red><b>{reference.CachedName}</b></color> bookmarked.");
+            }
+        }
+
+        private void PinAsset(string assetGUID)
+        {
+            var assetData = new AssetData
+            {
+                guid = assetGUID,
+                path = AssetDatabase.GUIDToAssetPath(assetGUID)
+            };
+            var asset = AssetDatabase.LoadAssetAtPath<Object>(assetData.path);
+            assetData.name = asset.name;
+            assetData.type = asset.GetType().ToString();
+            if (assetBookmarkGroups.ContainsKey(assetData.type))
+            {
+                if (assetBookmarkGroups[assetData.type].Add(assetData))
+                {
+                    assetBookmarkGroups[assetData.type].Root.value = true;
+                    Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: <color=yellow><b>{assetData.type}</b></color> asset <color=red><b>{assetData.path}</b></color> bookmarked.");
+                }
+            }
+            else
+            {
+                var group = new AssetBookmarkGroup(
+                    assetData.type,
+                    Random.ColorHSV(0f, 1f, 0.65f, 0.65f, 1f, 1f),
+                    new() { assetData },
+                    bookmarkGroupUxml,
+                    assetBtnUxml);
+                assetBookmarkGroups[assetData.type] = group;
+                assetScrollView.Add(group.Element);
+                assetBookmarkGroups[assetData.type].Root.value = true;
+                Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: <color=yellow><b>{assetData.type}</b></color> asset <color=red><b>{assetData.path}</b></color> bookmarked.");
             }
         }
 
@@ -400,6 +441,59 @@
                 var converter = new BinaryFormatter();
                 var data = converter.Deserialize(dataStream) as DataWrapper;
                 LoadData(data);
+            }
+        }
+
+        private void ClearAllBookmarks()
+        {
+            if (EditorUtility.DisplayDialog("Clear all bookmarks", "Are you sure?", "Yes", "No"))
+            {
+                foreach (var group in assetBookmarkGroups.Values)
+                {
+                    group.RemoveAll();
+                }
+
+                foreach (var group in sceneObjectBookmarkGroups.Values)
+                {
+                    group.RemoveAll();
+                }
+
+                SaveData();
+            }
+        }
+
+        private void ClearAssetBookmarks()
+        {
+            if (EditorUtility.DisplayDialog("Clear all asset bookmarks", "Are you sure?", "Yes", "No"))
+            {
+                foreach (var group in assetBookmarkGroups.Values)
+                {
+                    group.RemoveAll();
+                }
+
+                SaveData();
+            }
+        }
+
+        private void ClearSceneObjectBookmarks()
+        {
+            if (EditorUtility.DisplayDialog("Clear all scene object bookmarks", "Are you sure?", "Yes", "No"))
+            {
+                foreach (var group in sceneObjectBookmarkGroups.Values)
+                {
+                    group.RemoveAll();
+                }
+
+                SaveData();
+            }
+        }
+
+        public static void UpdateSavedData()
+        {
+            if (EditorWindow.HasOpenInstances<Bookmark4UnityWindow>())
+            {
+                var window = GetWindow<Bookmark4UnityWindow>(Name);
+                window.SaveData();
             }
         }
 

@@ -131,6 +131,15 @@ namespace Bookmark4Unity.Editor
             Data.RemoveAt(index);
             DataListView.Rebuild();
             if (IsEmpty) Element.AddToClassList(Bookmark4UnityWindow.HiddenContentClassName);
+            Bookmark4UnityWindow.UpdateSavedData();
+        }
+
+        public void RemoveAll()
+        {
+            Data.Clear();
+            DataListView.Rebuild();
+            Element.AddToClassList(Bookmark4UnityWindow.HiddenContentClassName);
+            Bookmark4UnityWindow.UpdateSavedData();
         }
 
         private void OnDrag(int index)

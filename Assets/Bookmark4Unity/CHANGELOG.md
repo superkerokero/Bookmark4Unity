@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v1.1.1 (2022-12-26)
+
+### Features
+
+- Re-implemented bookmark window using UIToolkit.
+  - Asset bookmarks and scene object bookmarks are now separate tabs.
+  - Asset tab foldout status is remembered, while scene object foldout status updates itself according to currently loaded scenes in the hierarchy.
+  - Added menu items for clearing bookmarks.
+  - Assets and objects in the bookmark can now be **draged & droped** anywhere in the editor.
+
+### Bugfix
+
+- Fix an issue introduced with scene view camera bookmarks that causes unity editor to stall when closing.
+
 ## v1.1.0 (2022-12-22)
 
 ### Features

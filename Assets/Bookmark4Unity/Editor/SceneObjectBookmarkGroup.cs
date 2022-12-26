@@ -15,6 +15,7 @@ namespace Bookmark4Unity.Editor
         public const int ItemHeight = 15;
         public bool IsEmpty => Data.Count < 1;
         public Dictionary<int, EventCallback<ClickEvent>> pingActions = new();
+        public Dictionary<int, EventCallback<ClickEvent>> focusActions = new();
         public Dictionary<int, EventCallback<ClickEvent>> delActions = new();
         public Dictionary<int, EventCallback<PointerLeaveEvent>> dragActions = new();
 
@@ -38,6 +39,7 @@ namespace Bookmark4Unity.Editor
             {
                 var icon = item.Q<Button>("Icon");
                 var btn = item.Q<Button>("Btn");
+                var focus = item.Q<Button>("Focus");
                 var del = item.Q<Button>("Del");
                 var data = Data[i];
                 var index = i; // save value for lambda functions
@@ -45,6 +47,7 @@ namespace Bookmark4Unity.Editor
                     data.gameObject is null ?
                     EditorGUIUtility.IconContent("console.warnicon").image as Texture2D :
                     PrefabUtility.GetIconForGameObject(data.gameObject));
+                focus.style.backgroundImage = Background.FromTexture2D(SceneViewBookmarkManager.SceneViewBookmarkIcon);
                 del.style.backgroundImage = Background.FromTexture2D(SceneViewBookmarkManager.SceneViewEmptyIcon);
                 btn.text = data.CachedName;
 
@@ -53,6 +56,12 @@ namespace Bookmark4Unity.Editor
                 pingActions[i] = evt => Ping(index);
                 btn.RegisterCallback<ClickEvent>(pingActions[i]);
                 btn.tooltip = $"Select \"{data.CachedName}\"";
+
+                // focus
+                if (focusActions.ContainsKey(i)) focus.UnregisterCallback<ClickEvent>(focusActions[i]);
+                focusActions[i] = evt => Focus(index);
+                focus.RegisterCallback<ClickEvent>(focusActions[i]);
+                focus.tooltip = $"Focus on \"{data.CachedName}\"";
 
                 // del
                 if (delActions.ContainsKey(i)) del.UnregisterCallback<ClickEvent>(delActions[i]);
@@ -98,15 +107,49 @@ namespace Bookmark4Unity.Editor
             }
         }
 
+        public void Focus(int index)
+        {
+            if (Data[index].gameObject != null)
+            {
+                Selection.activeGameObject = Data[index].gameObject;
+                SceneView.lastActiveSceneView.FrameSelected();
+            }
+            else
+            {
+                if (EditorUtility.DisplayDialog(Data[index].CachedName, "Selected game object dows not exist on current scene, remove it from list?", "Yes", "No"))
+                {
+                    Remove(index);
+                }
+            }
+        }
+
         public void Remove(int index)
         {
             if (Data[index].gameObject is not null)
             {
                 UnityEngine.Object.DestroyImmediate(Data[index].gameObject.GetComponent<GuidComponent>());
             }
+
             Data.RemoveAt(index);
             DataListView.Rebuild();
             if (IsEmpty) Element.AddToClassList(Bookmark4UnityWindow.HiddenContentClassName);
+            Bookmark4UnityWindow.UpdateSavedData();
+        }
+
+        public void RemoveAll()
+        {
+            for (int i = 0; i < Data.Count; i++)
+            {
+                if (Data[i].gameObject is not null)
+                {
+                    UnityEngine.Object.DestroyImmediate(Data[i].gameObject.GetComponent<GuidComponent>());
+                }
+            }
+
+            Data.Clear();
+            DataListView.Rebuild();
+            Element.AddToClassList(Bookmark4UnityWindow.HiddenContentClassName);
+            Bookmark4UnityWindow.UpdateSavedData();
         }
 
         private void OnDrag(int index)
