@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A simple unity editor tool to provide basic bookmarking for scene objects and project assets.
+A simple unity editor tool to provide basic bookmarking for scene objects, scene view camera positions, and project assets.
 
 [CHANGELOG](https://github.com/superkerokero/Bookmark4Unity/blob/master/Assets/Bookmark4Unity/CHANGELOG.md)
 
