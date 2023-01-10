@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v1.1.2 (2023-01-10)
+
+### Features
+
+- Added search providers to support searching bookmarks using quick search window.
+  - Use `b4u:` for asset/scene object bookmarks.
+  - Use `svb:` for scene view camera bookmarks.
+
 ## v1.1.1 (2022-12-26)
 
 ### Features

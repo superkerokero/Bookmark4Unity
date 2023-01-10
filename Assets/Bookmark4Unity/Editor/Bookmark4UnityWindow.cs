@@ -29,7 +29,7 @@
 
         public const string Name = "Bookmark4Unity";
         public static string Prefix => Application.productName + "_BOOKMARK4UNITY_";
-        private static string PinnedKey => Prefix + "pinned";
+        public static string PinnedKey => Prefix + "pinned";
 
         public bool IsAssetTabActive => assetTab is not null && assetTab.ClassListContains(currentlySelectedTabClassName);
 
