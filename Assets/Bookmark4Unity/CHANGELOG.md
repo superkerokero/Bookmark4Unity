@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## v1.1.3 (2023-01-15)
+
+### Features
+
+- Added scene object collection bookmarking.
+  - When pinning multiple scene objects, you will be asked to either create a collection of scene objects or add scene object bookmarks individually.
+- Guid components will not be removed automatically when un-pinning scene object bookmarks to avoid making bookmark collections invalid.
+  - If you want to remove all guid components in loaded scenes, use `Bookmark4Unity Window → Clear → All Guid Components Attached`. Note that removing guid components will make scene object bookmarks invalid.
+
+### Bugfix
+
+- Fix a typo in scene objects editor dialogue.
+
 ## v1.1.2 (2023-01-10)
 
 ### Features

@@ -1,5 +1,6 @@
 ﻿namespace Bookmark4Unity.Editor
 {
+    using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
@@ -8,9 +9,9 @@
     using UnityEditor;
     using UnityEditor.SceneManagement;
     using UnityEngine;
-    using UnityEngine.SceneManagement;
     using UnityEngine.UIElements;
     using Object = UnityEngine.Object;
+    using Random = UnityEngine.Random;
     using Scene = UnityEngine.SceneManagement.Scene;
 
     public class Bookmark4UnityWindow : EditorWindow, IHasCustomMenu
@@ -19,6 +20,7 @@
         public class DataWrapper
         {
             public List<GuidData> references = new();
+            public List<SceneObjectCollection> collections = new();
             public List<AssetData> assets = new();
             public List<string> closedAssetTypes = new();
             public bool isAssetTabActive;
@@ -194,7 +196,7 @@
             }
             foreach (var group in sceneObjectBookmarkGroups.Values)
             {
-                group.DataListView.RefreshItems();
+                group.Refresh();
                 group.Root.value = opendScenes.Contains(group.Root.text);
             }
         }
@@ -226,6 +228,7 @@
             menu.AddItem(new GUIContent("Clear/All Bookmarks"), false, ClearAllBookmarks);
             menu.AddItem(new GUIContent("Clear/Asset Bookmarks"), false, ClearAssetBookmarks);
             menu.AddItem(new GUIContent("Clear/Scene Object Bookmarks"), false, ClearSceneObjectBookmarks);
+            menu.AddItem(new GUIContent("Clear/All Guid Components Attached"), false, ClearGuidComponents);
         }
 
         public void PinSelected(ClickEvent evt = null)
@@ -247,16 +250,34 @@
             else
             {
                 // add scene objects
-                foreach (var trans in Selection.transforms)
+                if (Selection.transforms.Length < 1) return;
+                if (Selection.transforms.Length > 1)
                 {
-                    PinTransform(trans);
+                    if (EditorUtility.DisplayDialog("Create bookmark for multiple scene objects", "Choose the mode of bookmark for multiple scene objects.", "As Collection", "As Individual"))
+                    {
+                        // as collection
+                        var bookmarkName = EditorInputDialog.Show("Create scene object collection bookmark", "Please type the name of the collection:", "collection");
+                        if (!String.IsNullOrEmpty(bookmarkName))
+                        {
+                            PinTransformCollection(bookmarkName, Selection.transforms);
+                        }
+                    }
+                    else
+                    {
+                        // as individuals
+                        foreach (var trans in Selection.transforms)
+                        {
+                            PinTransform(trans);
+                        }
+                    }
+                }
+                else
+                {
+                    PinTransform(Selection.transforms[0]);
                 }
 
-                if (Selection.transforms.Length > 0)
-                {
-                    ActivateSceneObjTab();
-                    SaveData();
-                }
+                ActivateSceneObjTab();
+                SaveData();
             }
         }
 
@@ -268,7 +289,7 @@
             var reference = new GuidReference(guidComponent);
             if (sceneObjectBookmarkGroups.ContainsKey(reference.CachedSceneName))
             {
-                if (sceneObjectBookmarkGroups[reference.CachedSceneName].Add(reference))
+                if (sceneObjectBookmarkGroups[reference.CachedSceneName].AddSceneObject(reference))
                 {
                     Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: [<color=yellow><b>{reference.CachedSceneName}</b></color>] Scene object <color=red><b>{reference.CachedName}</b></color> bookmarked.");
                 }
@@ -279,11 +300,47 @@
                     reference.CachedSceneName,
                     Random.ColorHSV(0f, 1f, 0.65f, 0.65f, 1f, 1f),
                     new() { reference },
+                    new(),
                     bookmarkGroupUxml,
                     sceneObjBtnUxml);
                 sceneObjectBookmarkGroups[reference.CachedSceneName] = group;
                 sceneObjScrollView.Add(group.Element);
                 Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: [<color=yellow><b>{reference.CachedSceneName}</b></color>] Scene object <color=red><b>{reference.CachedName}</b></color> bookmarked.");
+            }
+        }
+
+        private void PinTransformCollection(string name, Transform[] transforms)
+        {
+            var scene = transforms[0].gameObject.scene.name;
+            var collection = new SceneObjectReferenceCollection(
+                name,
+                scene,
+                transforms.Select(trans =>
+                {
+                    var gameObj = trans.gameObject;
+                    var guidComponent = gameObj.GetComponent<GuidComponent>();
+                    if (guidComponent == null) guidComponent = gameObj.AddComponent<GuidComponent>();
+                    return new GuidReference(guidComponent);
+                }).ToList());
+            if (sceneObjectBookmarkGroups.ContainsKey(scene))
+            {
+                if (sceneObjectBookmarkGroups[scene].AddSceneObjectCollection(collection))
+                {
+                    Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: [<color=yellow><b>{scene}</b></color>] Scene object collection <color=red><b>{name}</b></color> bookmarked.\n<color=orange><b>({transforms.Length} objects)</b></color>");
+                }
+            }
+            else
+            {
+                var group = new SceneObjectBookmarkGroup(
+                    scene,
+                    Random.ColorHSV(0f, 1f, 0.65f, 0.65f, 1f, 1f),
+                    new(),
+                    new() { collection },
+                    bookmarkGroupUxml,
+                    sceneObjBtnUxml);
+                sceneObjectBookmarkGroups[scene] = group;
+                sceneObjScrollView.Add(group.Element);
+                Debug.Log($"<color=green><b>{Bookmark4UnityWindow.Name}</b></color>: [<color=yellow><b>{scene}</b></color>] Scene object collection <color=red><b>{name}</b></color> bookmarked.\n<color=orange><b>({transforms.Length} objects)</b></color>");
             }
         }
 
@@ -325,7 +382,8 @@
             var data = new DataWrapper();
             foreach (var group in sceneObjectBookmarkGroups.Values)
             {
-                data.references.AddRange(group.Data.Select(reference => reference.ToData()));
+                data.references.AddRange(group.SceneObjListView.ToData());
+                data.collections.AddRange(group.SceneObjCollectionListView.ToData());
             }
 
             foreach (var group in assetBookmarkGroups.Values)
@@ -365,7 +423,7 @@
             {
                 if (sceneObjectBookmarkGroups.ContainsKey(reference.cachedScene))
                 {
-                    sceneObjectBookmarkGroups[reference.cachedScene].Add(new GuidReference(reference));
+                    sceneObjectBookmarkGroups[reference.cachedScene].AddSceneObject(new GuidReference(reference));
                 }
                 else
                 {
@@ -373,9 +431,31 @@
                         reference.cachedScene,
                         Random.ColorHSV(0f, 1f, 0.65f, 0.65f, 1f, 1f),
                         new() { new GuidReference(reference) },
+                        new(),
                         bookmarkGroupUxml,
                         sceneObjBtnUxml);
                     sceneObjectBookmarkGroups[reference.cachedScene] = group;
+                    sceneObjScrollView.Add(group.Element);
+                }
+            }
+
+            // update scene object collection bookmarks
+            foreach (var collection in data.collections)
+            {
+                if (sceneObjectBookmarkGroups.ContainsKey(collection.scene))
+                {
+                    sceneObjectBookmarkGroups[collection.scene].AddSceneObjectCollection(new SceneObjectReferenceCollection(collection));
+                }
+                else
+                {
+                    var group = new SceneObjectBookmarkGroup(
+                        collection.scene,
+                        Random.ColorHSV(0f, 1f, 0.65f, 0.65f, 1f, 1f),
+                        new(),
+                        new() { new SceneObjectReferenceCollection(collection) },
+                        bookmarkGroupUxml,
+                        sceneObjBtnUxml);
+                    sceneObjectBookmarkGroups[collection.scene] = group;
                     sceneObjScrollView.Add(group.Element);
                 }
             }
@@ -424,11 +504,9 @@
             if (path == "") return;
 
             var data = GetCurrentData();
-            using (var dataStream = new FileStream(path, FileMode.Create))
-            {
-                var converter = new BinaryFormatter();
-                converter.Serialize(dataStream, data);
-            }
+            using var dataStream = new FileStream(path, FileMode.Create);
+            var converter = new BinaryFormatter();
+            converter.Serialize(dataStream, data);
         }
 
         private void LoadDataFromFile()
@@ -436,12 +514,10 @@
             var path = EditorUtility.OpenFilePanel("Bookmark4Unity", ".", "dat");
             if (path == "") return;
 
-            using (var dataStream = new FileStream(path, FileMode.Open))
-            {
-                var converter = new BinaryFormatter();
-                var data = converter.Deserialize(dataStream) as DataWrapper;
-                LoadData(data);
-            }
+            using var dataStream = new FileStream(path, FileMode.Open);
+            var converter = new BinaryFormatter();
+            var data = converter.Deserialize(dataStream) as DataWrapper;
+            LoadData(data);
         }
 
         private void ClearAllBookmarks()
@@ -485,6 +561,18 @@
                 }
 
                 SaveData();
+            }
+        }
+
+        private void ClearGuidComponents()
+        {
+            if (EditorUtility.DisplayDialog("Clear all guid components in the scene?", "Are you sure?\n(all scene object bookmarks in the loaded scenes will become invalid after this operation!)", "Yes", "No"))
+            {
+                var components = Object.FindObjectsOfType<GuidComponent>(true);
+                foreach (var component in components)
+                {
+                    Object.DestroyImmediate(component);
+                }
             }
         }
 
