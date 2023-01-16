@@ -1,6 +1,6 @@
 {
   "name": "com.superkerokero.bookmark4unity",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "displayName": "Bookmark4Unity",
   "description": "A simple unity editor tool to provide basic bookmarking for scene objects, scene view camera positions, and project assets.",
   "unity": "2021.3",
