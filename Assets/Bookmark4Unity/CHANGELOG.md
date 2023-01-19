@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## v1.1.4 (2023-01-19)
+
+### Features
+
+- Added window menu items to access log/folders directly:
+  - Console log
+  - Folders
+    - Data (`Application.dataPath`)
+    - Persistent data (`Application.persistentDataPath`)
+    - Streaming assets (`Application.streamingAssetsPath`)
+    - Temporary cache (`Application.temporaryCachePath`)
+
 ## v1.1.3 (2023-01-15)
 
 ### Features

@@ -217,20 +217,6 @@
             sceneObjScrollView.RemoveFromClassList(HiddenContentClassName);
         }
 
-        /// <summary>
-        /// Implement IHasCustomMenu interface
-        /// </summary>
-        /// <param name="menu">menu</param>
-        void IHasCustomMenu.AddItemsToMenu(GenericMenu menu)
-        {
-            menu.AddItem(new GUIContent("Save Collections"), false, SaveDataToFile);
-            menu.AddItem(new GUIContent("Load Collections"), false, LoadDataFromFile);
-            menu.AddItem(new GUIContent("Clear/All Bookmarks"), false, ClearAllBookmarks);
-            menu.AddItem(new GUIContent("Clear/Asset Bookmarks"), false, ClearAssetBookmarks);
-            menu.AddItem(new GUIContent("Clear/Scene Object Bookmarks"), false, ClearSceneObjectBookmarks);
-            menu.AddItem(new GUIContent("Clear/All Guid Components Attached"), false, ClearGuidComponents);
-        }
-
         public void PinSelected(ClickEvent evt = null)
         {
             if (Selection.activeTransform is null)
@@ -520,62 +506,6 @@
             LoadData(data);
         }
 
-        private void ClearAllBookmarks()
-        {
-            if (EditorUtility.DisplayDialog("Clear all bookmarks", "Are you sure?", "Yes", "No"))
-            {
-                foreach (var group in assetBookmarkGroups.Values)
-                {
-                    group.RemoveAll();
-                }
-
-                foreach (var group in sceneObjectBookmarkGroups.Values)
-                {
-                    group.RemoveAll();
-                }
-
-                SaveData();
-            }
-        }
-
-        private void ClearAssetBookmarks()
-        {
-            if (EditorUtility.DisplayDialog("Clear all asset bookmarks", "Are you sure?", "Yes", "No"))
-            {
-                foreach (var group in assetBookmarkGroups.Values)
-                {
-                    group.RemoveAll();
-                }
-
-                SaveData();
-            }
-        }
-
-        private void ClearSceneObjectBookmarks()
-        {
-            if (EditorUtility.DisplayDialog("Clear all scene object bookmarks", "Are you sure?", "Yes", "No"))
-            {
-                foreach (var group in sceneObjectBookmarkGroups.Values)
-                {
-                    group.RemoveAll();
-                }
-
-                SaveData();
-            }
-        }
-
-        private void ClearGuidComponents()
-        {
-            if (EditorUtility.DisplayDialog("Clear all guid components in the scene?", "Are you sure?\n(all scene object bookmarks in the loaded scenes will become invalid after this operation!)", "Yes", "No"))
-            {
-                var components = Object.FindObjectsOfType<GuidComponent>(true);
-                foreach (var component in components)
-                {
-                    Object.DestroyImmediate(component);
-                }
-            }
-        }
-
         public static void UpdateSavedData()
         {
             if (EditorWindow.HasOpenInstances<Bookmark4UnityWindow>())
@@ -642,5 +572,114 @@
                 SaveData(data);
             }
         }
+
+        #region IHasCustomMenu
+        /// <summary>
+        /// Implement IHasCustomMenu interface
+        /// </summary>
+        /// <param name="menu">menu</param>
+        void IHasCustomMenu.AddItemsToMenu(GenericMenu menu)
+        {
+            menu.AddItem(new GUIContent("Save Collections"), false, SaveDataToFile);
+            menu.AddItem(new GUIContent("Load Collections"), false, LoadDataFromFile);
+
+            menu.AddItem(new GUIContent("Clear/All Bookmarks"), false, ClearAllBookmarks);
+            menu.AddItem(new GUIContent("Clear/Asset Bookmarks"), false, ClearAssetBookmarks);
+            menu.AddItem(new GUIContent("Clear/Scene Object Bookmarks"), false, ClearSceneObjectBookmarks);
+            menu.AddItem(new GUIContent("Clear/All Guid Components Attached"), false, ClearGuidComponents);
+
+            menu.AddItem(new GUIContent("Open/Folders/Data"), false, OpenDataFolder);
+            menu.AddItem(new GUIContent("Open/Folders/Persistent Data"), false, OpenPersistentDataFolder);
+            menu.AddItem(new GUIContent("Open/Folders/Streaming Assets"), false, OpenStreamingAssetsFolder);
+            menu.AddItem(new GUIContent("Open/Folders/Temporary Cache"), false, OpenTemporaryCacheFolder);
+            menu.AddItem(new GUIContent("Open/Console Log"), false, OpenConsoleLog);
+        }
+
+        private void ClearAllBookmarks()
+        {
+            if (EditorUtility.DisplayDialog("Clear all bookmarks", "Are you sure?", "Yes", "No"))
+            {
+                foreach (var group in assetBookmarkGroups.Values)
+                {
+                    group.RemoveAll();
+                }
+
+                foreach (var group in sceneObjectBookmarkGroups.Values)
+                {
+                    group.RemoveAll();
+                }
+
+                SaveData();
+            }
+        }
+
+        private void ClearAssetBookmarks()
+        {
+            if (EditorUtility.DisplayDialog("Clear all asset bookmarks", "Are you sure?", "Yes", "No"))
+            {
+                foreach (var group in assetBookmarkGroups.Values)
+                {
+                    group.RemoveAll();
+                }
+
+                SaveData();
+            }
+        }
+
+        private void ClearSceneObjectBookmarks()
+        {
+            if (EditorUtility.DisplayDialog("Clear all scene object bookmarks", "Are you sure?", "Yes", "No"))
+            {
+                foreach (var group in sceneObjectBookmarkGroups.Values)
+                {
+                    group.RemoveAll();
+                }
+
+                SaveData();
+            }
+        }
+
+        private void ClearGuidComponents()
+        {
+            if (EditorUtility.DisplayDialog("Clear all guid components in the scene?", "Are you sure?\n(all scene object bookmarks in the loaded scenes will become invalid after this operation!)", "Yes", "No"))
+            {
+                var components = Object.FindObjectsOfType<GuidComponent>(true);
+                foreach (var component in components)
+                {
+                    Object.DestroyImmediate(component);
+                }
+            }
+        }
+
+        private void OpenLocalFolder(string path)
+        {
+            Application.OpenURL($"file://{path}");
+        }
+
+        private void OpenDataFolder()
+        {
+            OpenLocalFolder(Application.dataPath);
+        }
+
+        private void OpenPersistentDataFolder()
+        {
+            OpenLocalFolder(Application.persistentDataPath);
+        }
+
+        private void OpenStreamingAssetsFolder()
+        {
+            OpenLocalFolder(Application.streamingAssetsPath);
+        }
+
+        private void OpenTemporaryCacheFolder()
+        {
+            OpenLocalFolder(Application.temporaryCachePath);
+        }
+
+        private void OpenConsoleLog()
+        {
+            OpenLocalFolder(Application.consoleLogPath);
+        }
+        #endregion IHasCustomMenu
     }
 }
