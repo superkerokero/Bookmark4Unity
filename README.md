@@ -50,7 +50,7 @@ A simple unity editor tool to provide basic bookmarking for scene objects, scene
 ![](Images/scene_view_demo.gif)
 
 - Enable the overlay
-  - Press `space` inside the scene view to bring up overlay visibility menu, and turn `Bookmark4Unity` on
+  - Press `space`(for ~Unity2021.3)/`｀`(for Unity2022.3~) inside the scene view to bring up overlay visibility menu, and turn `Bookmark4Unity` on
   - The new camera icon will appear on the top of scene view, click it to toggle the scene view bookmark overlay window
 - Using the overlay
   - You can bookmark/restore camera positions by clicking corresponding slot buttons
