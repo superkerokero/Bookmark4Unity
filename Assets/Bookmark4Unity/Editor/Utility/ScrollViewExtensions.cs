@@ -1,3 +1,4 @@
+using System;
 namespace Bookmark4Unity.Editor
 {
     using UnityEngine.UIElements;
@@ -12,7 +13,7 @@ namespace Bookmark4Unity.Editor
                 var fb = b.Q<Foldout>("Root");
                 if (fa is null) return 1;
                 if (fb is null) return -1;
-                return fa.text.CompareTo(fb.text);
+                return String.Compare(fa.text, fb.text, StringComparison.Ordinal);
             });
         }
 
@@ -24,7 +25,7 @@ namespace Bookmark4Unity.Editor
                 var fb = b.Q<Foldout>("Root");
                 if (fa is null) return -1;
                 if (fb is null) return 1;
-                return fb.text.CompareTo(fa.text);
+                return String.Compare(fb.text, fa.text, StringComparison.Ordinal);
             });
         }
     }
