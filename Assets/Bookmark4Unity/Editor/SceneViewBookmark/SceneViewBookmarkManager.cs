@@ -1,6 +1,5 @@
 using System;
 using UnityEditor;
-using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -15,8 +14,8 @@ namespace Bookmark4Unity.Editor
         private const string SceneViewBookmarkIconWhiteGUID = "0dcf460af82ad477f8e42045d0e34711";
         private const string SceneViewEmptyIconGUID = "fede30e0a177c49e9bd9a9ef612d58ad";
         public const int maxBookmarkCount = 9;
-        public const int previewScreenshotSizeX = 50;
-        public const int previewScreenshotSizeY = 40;
+        public const int previewScreenshotSizeX = 42;
+        public const int previewScreenshotSizeY = 42;
 
         const int previousViewSlot = 0;
 
@@ -140,20 +139,22 @@ namespace Bookmark4Unity.Editor
             if (sceneView is null) return null;
             if (!sceneView.hasFocus) sceneView.Show();
 
-            // Get screen position and sizes, cutout top banner
-            Vector2 vec2Position = sceneView.position.position;
-            vec2Position.x += 1;
-            vec2Position.y += 40;
-            var sizeX = sceneView.position.width;
-            var sizeY = sceneView.position.height - 21;
+            // Create a temporary RenderTexture with the desired resolution
+            var renderTexture = new RenderTexture(previewScreenshotSizeX, previewScreenshotSizeY, 24);
+            sceneView.camera.targetTexture = renderTexture;
+            sceneView.camera.Render();
 
-            // Read pixels at given position sizes
-            Color[] colors = InternalEditorUtility.ReadScreenPixel(vec2Position, (int)sizeX, (int)sizeY);
+            // Create a new Texture2D and read the RenderTexture into it
+            var result = new Texture2D(previewScreenshotSizeX, previewScreenshotSizeY, TextureFormat.RGB24, false);
+            RenderTexture.active = renderTexture;
+            result.ReadPixels(new Rect(0, 0, previewScreenshotSizeX, previewScreenshotSizeY), 0, 0);
+            result.Apply();
 
-            // Write result Color[] data into a temporal Texture2D
-            var result = new Texture2D((int)sizeX, (int)sizeY);
-            result.SetPixels(colors);
-            GPUTextureScaler.Scale(result, previewScreenshotSizeX, previewScreenshotSizeY);
+            // Clean up
+            sceneView.camera.targetTexture = null;
+            RenderTexture.active = null;
+            UnityEngine.Object.DestroyImmediate(renderTexture);
+
             return result;
         }
     }
