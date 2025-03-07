@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v1.1.5 (2025-03-07)
+
+### Features
+
+- Update project version to 6000.0.38f1
+
+### Bugfix
+
+- Fix an issue where the scene view camera bookmarks preview capture not working in newer unity versions.
+
 ## v1.1.4 (2023-01-19)
 
 ### Features
